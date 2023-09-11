@@ -27,11 +27,11 @@ def export_queries(queries, query_min_file, query_max_file):
             
 
 def query_minmax_file_names(upper_bound):
-    s = f'queries/experiment1.1_{{}}_ub{upper_bound}.txt'
+    s = f'queries/experiment1-1_{{}}_ub{upper_bound}.txt'
     return (s.format("min"), s.format("max"))
 
 def range_list_file_name(upper_bound):
-    return f'queries/experiment1.1_ranges_ub{upper_bound}.txt'
+    return f'queries/experiment1-1_ranges_ub{upper_bound}.txt'
 
 def generate_all_queries_for_experiment1():
     for upper_bound in [2**9-1, 2**13-1, 2**17-1, 2**31-1]:
@@ -53,7 +53,7 @@ def generate_all_workloads_for_experiment1(is_local):
         minf, maxf = query_minmax_file_names(upper_bound)
         for contention in [0, 4, 8]: 
             for sparsity in [1, 2, 4, 8]:
-                with open(f'workloads/experiment1.1_c{contention}_s{sparsity}_ub{upper_bound}.yml', 'w+') as f:
+                with open(f'workloads/experiment1-1_c{contention}_s{sparsity}_ub{upper_bound}.yml', 'w+') as f:
                     f.write(template.render(upper_bound=upper_bound, contention_factor=contention, sparsity=sparsity, document_count=document_count, query_count=query_count, threads=threads, query_min_file=basedir + minf, query_max_file=basedir + maxf, use_crypt_shared_lib=not is_local, crypt_shared_lib_path=crypt_path))
 
 generate_all_queries_for_experiment1()
