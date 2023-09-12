@@ -27,11 +27,11 @@ def export_queries(queries, query_min_file, query_max_file):
             
 
 def query_minmax_file_names(upper_bound):
-    s = f'queries/experiment1-1_{{}}_ub{upper_bound}.txt'
+    s = f'queries/experiment1_1_{{}}_ub{upper_bound}.txt'
     return (s.format("min"), s.format("max"))
 
 def range_list_file_name(upper_bound):
-    return f'queries/experiment1-1_ranges_ub{upper_bound}.txt'
+    return f'queries/experiment1_1_ranges_ub{upper_bound}.txt'
 
 def generate_all_queries_for_experiment1():
     for upper_bound in [2**9-1, 2**13-1, 2**17-1, 2**31-1]:
@@ -48,13 +48,32 @@ def generate_all_workloads_for_experiment1(is_local):
         crypt_path = None
     else:
         crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
-    template = env.get_template("experiment-1.template")
+    wldir = 'local' if is_local else 'evergreen'
+    main_template = env.get_template("experiment-1.template")
+    storage_template = env.get_template("experiment-1-storage.template")
     for upper_bound in [2**9-1, 2**13-1, 2**17-1, 2**31-1]:
         minf, maxf = query_minmax_file_names(upper_bound)
-        for contention in [0, 4, 8]: 
-            for sparsity in [1, 2, 4, 8]:
-                with open(f'workloads/experiment1-1_c{contention}_s{sparsity}_ub{upper_bound}.yml', 'w+') as f:
-                    f.write(template.render(upper_bound=upper_bound, contention_factor=contention, sparsity=sparsity, document_count=document_count, query_count=query_count, threads=threads, query_min_file=basedir + minf, query_max_file=basedir + maxf, use_crypt_shared_lib=not is_local, crypt_shared_lib_path=crypt_path))
+        for sparsity in [1, 2, 3, 4]:
+            if is_local:
+                with open(f'workloads/{wldir}/experiment1_1_storage_s{sparsity}_ub{upper_bound}.yml', 'w+') as f:
+                    f.write(storage_template.render(use_encryption=True, upper_bound=upper_bound, sparsity=sparsity, document_count=document_count, query_count=query_count, threads=threads, query_min_file=basedir + minf, query_max_file=basedir + maxf, use_crypt_shared_lib=not is_local, crypt_shared_lib_path=crypt_path))
+            for contention in [0, 4, 8]: 
+                with open(f'workloads/{wldir}/experiment1_1_c{contention}_s{sparsity}_ub{upper_bound}.yml', 'w+') as f:
+                    f.write(main_template.render(upper_bound=upper_bound, contention_factor=contention, sparsity=sparsity, document_count=document_count, query_count=query_count, threads=threads, query_min_file=basedir + minf, query_max_file=basedir + maxf, use_crypt_shared_lib=not is_local, crypt_shared_lib_path=crypt_path))
+    with open(f'workloads/{wldir}/experiment1_1_storage_unencrypted.yml', 'w+') as f:
+        f.write(storage_template.render(use_encryption=False, document_count=document_count, query_count=query_count, threads=threads, query_min_file=basedir + minf, query_max_file=basedir + maxf, use_crypt_shared_lib=not is_local, crypt_shared_lib_path=crypt_path))
 
+def print_wl_names():
+    fmt = '    - "qe_range_testing_workloads_evergreen_{}"'
+
+    for upper_bound in [2**9-1, 2**13-1, 2**17-1, 2**31-1]:
+        for sparsity in [1, 2, 3, 4]:
+            for contention in [0, 4, 8]: 
+                s = f'experiment1_1_c{contention}_s{sparsity}_ub{upper_bound}'
+                print(fmt.format(s))
+    print(fmt.format('experiment1_1_storage_unencrypted'))
+            
 generate_all_queries_for_experiment1()
+generate_all_workloads_for_experiment1(is_local=False)
 generate_all_workloads_for_experiment1(is_local=True)
+print_wl_names()
