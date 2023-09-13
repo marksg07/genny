@@ -36,7 +36,7 @@ Clients:
 Actors:
   - Name: InsertActor
     Type: CrudActor
-    Threads: {{ threads }}
+    Threads: {{ insert_threads }}
     Database: &db genny_qerangebench_experiment1
     ClientName: &pool MyPool
     Phases:
@@ -44,7 +44,7 @@ Actors:
       Collection: &coll OneFieldOneValue
       Operations:
       - OperationName: drop
-    - Repeat: {{ document_count // threads }}
+    - Repeat: {{ document_count // insert_threads }}
       Collection: *coll
       MetricsName: "load"
       Operations:
