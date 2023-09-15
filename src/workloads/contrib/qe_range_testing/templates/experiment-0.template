@@ -69,8 +69,8 @@ Actors:
           Filter: 
             {
               $and: [
-                {field1: {$gte: {^ChooseFromDataset:{"path": "{{ query_min_file }}", "sequential": true, "startFromLine": {{ t * query_count // query_threads }}}}}},
-                {field1: {$lte: {^ChooseFromDataset:{"path": "{{ query_max_file }}", "sequential": true, "startFromLine": {{ t * query_count // query_threads }}}}}}
+                {field1: {$gte: {{ query_min }}}},
+                {field1: {$lte: {{ query_max }}}}
               ]
             }
  {% endfor %}

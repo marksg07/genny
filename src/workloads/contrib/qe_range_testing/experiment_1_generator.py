@@ -61,6 +61,25 @@ def generate_all_workloads_for_experiment1(is_local):
     with open(f'workloads/{wldir}/experiment1_1_storage_unencrypted.yml', 'w+') as f:
         f.write(storage_template.render(use_encryption=False, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, query_min_file=basedir + minf, query_max_file=basedir + maxf, use_crypt_shared_lib=not is_local, crypt_shared_lib_path=crypt_path))
 
+def generate_all_workloads_for_experiment0(is_local):
+    if is_local:
+        crypt_path = None
+    else:
+        crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
+    wldir = 'local' if is_local else 'evergreen'
+    main_template = env.get_template("experiment-0.template")
+    for upper_bound in [2**9-1, 2**31-1]:
+        for sparsity in [1, 4]:
+            for contention in [0, 8]: 
+                for small in [False, True]:
+                    if small:
+                        query_max = 2
+                    else:
+                        query_max = upper_bound - 1
+                    with open(f'workloads/{wldir}/experiment0_c{contention}_s{sparsity}_ub{upper_bound}_{"small" if small else "big"}.yml', 'w+') as f:
+                        f.write(main_template.render(upper_bound=upper_bound, contention_factor=contention, sparsity=sparsity, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, query_min=1, query_max=query_max, use_crypt_shared_lib=not is_local, crypt_shared_lib_path=crypt_path))
+
+
 def print_wl_names():
     fmt = '    - "qe_range_testing_workloads_evergreen_{}"'
 
@@ -70,8 +89,17 @@ def print_wl_names():
                 s = f'experiment1_1_c{contention}_s{sparsity}_ub{upper_bound}'
                 print(fmt.format(s))
     print(fmt.format('experiment1_1_storage_unencrypted'))
+    for upper_bound in [2**9-1, 2**31-1]:
+        for sparsity in [1, 4]:
+            for contention in [0, 8]: 
+                for small in [False, True]:
+                    print(fmt.format(f'experiment0_c{contention}_s{sparsity}_ub{upper_bound}_{"small" if small else "big"}'))
+                     
+
             
-generate_all_queries_for_experiment1()
-generate_all_workloads_for_experiment1(is_local=False)
-generate_all_workloads_for_experiment1(is_local=True)
+# generate_all_queries_for_experiment1()
+# generate_all_workloads_for_experiment1(is_local=False)
+# generate_all_workloads_for_experiment1(is_local=True)
 print_wl_names()
+# generate_all_workloads_for_experiment0(is_local=False)
+# generate_all_workloads_for_experiment0(is_local=True)

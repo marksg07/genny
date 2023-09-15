@@ -54,3 +54,11 @@ Actors:
           Document:
             field1: 0
             _id: {^Inc: {start: -100000, multiplier: 50000}}
+
+AutoRun:
+- When:
+    mongodb_setup:
+      $eq:
+      - single-replica-fle
+    branch_name:
+      $gte: v7.0
