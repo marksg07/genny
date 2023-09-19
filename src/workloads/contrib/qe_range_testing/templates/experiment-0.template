@@ -33,10 +33,6 @@ Actors:
     Database: *encrypted_db
     ClientName: &encrypted_pool EncryptedPool
     Phases:
-    - Repeat: 1
-      Collection: *encrypted_coll
-      Operations:
-      - OperationName: drop
     - Repeat: {{ document_count // insert_threads }}
       Collection: *encrypted_coll
       MetricsName: "load"
@@ -58,7 +54,6 @@ Actors:
     ClientName: *encrypted_pool
     Phases:
     - *nop
-    - *nop
     - Repeat: {{ query_count // query_threads }}
       Collection: *encrypted_coll
       MetricsName: "query"
@@ -66,13 +61,11 @@ Actors:
       - OperationName: find
         OperationMetricsName: range_query
         OperationCommand:
-          Filter: 
-            {
-              $and: [
-                {field1: {$gte: {{ query_min }}}},
-                {field1: {$lte: {{ query_max }}}}
-              ]
+          Filter: { field1: {
+              $gte: {{ query_min }},
+              $lte: {{ query_max }}
             }
+          }
  {% endfor %}
 
 
@@ -81,7 +74,7 @@ Actors:
     Threads: 1
     Phases:
       - Nop: true
-      - Phase: 1..2
+      - Phase: 1
         LogEvery: 5 minutes
         Blocking: None
 

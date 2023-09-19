@@ -46,7 +46,7 @@ def generate_all_workloads_for_experiment1(is_local):
     else: 
         basedir = './src/genny/src/workloads/contrib/qe_range_testing/'
     if is_local:
-        crypt_path = None
+        crypt_path = '/home/ubuntu/mongo_crypt/lib/mongo_crypt_v1.so'
     else:
         crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
     wldir = 'local' if is_local else 'evergreen'
@@ -57,13 +57,13 @@ def generate_all_workloads_for_experiment1(is_local):
         for sparsity in [1, 2, 3, 4]:
             for contention in [0, 4, 8]: 
                 with open(f'workloads/{wldir}/experiment1_1_c{contention}_s{sparsity}_ub{upper_bound}.yml', 'w+') as f:
-                    f.write(main_template.render(upper_bound=upper_bound, contention_factor=contention, sparsity=sparsity, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, query_min_file=basedir + minf, query_max_file=basedir + maxf, use_crypt_shared_lib=not is_local, crypt_shared_lib_path=crypt_path))
+                    f.write(main_template.render(upper_bound=upper_bound, contention_factor=contention, sparsity=sparsity, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, query_min_file=basedir + minf, query_max_file=basedir + maxf, use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
     with open(f'workloads/{wldir}/experiment1_1_storage_unencrypted.yml', 'w+') as f:
-        f.write(storage_template.render(use_encryption=False, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, query_min_file=basedir + minf, query_max_file=basedir + maxf, use_crypt_shared_lib=not is_local, crypt_shared_lib_path=crypt_path))
+        f.write(storage_template.render(use_encryption=False, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, query_min_file=basedir + minf, query_max_file=basedir + maxf, use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
 
 def generate_all_workloads_for_experiment0(is_local):
     if is_local:
-        crypt_path = None
+        crypt_path = '/home/ubuntu/mongo_crypt/lib/mongo_crypt_v1.so'
     else:
         crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
     wldir = 'local' if is_local else 'evergreen'
@@ -77,7 +77,7 @@ def generate_all_workloads_for_experiment0(is_local):
                     else:
                         query_max = upper_bound - 1
                     with open(f'workloads/{wldir}/experiment0_c{contention}_s{sparsity}_ub{upper_bound}_{"small" if small else "big"}.yml', 'w+') as f:
-                        f.write(main_template.render(upper_bound=upper_bound, contention_factor=contention, sparsity=sparsity, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, query_min=1, query_max=query_max, use_crypt_shared_lib=not is_local, crypt_shared_lib_path=crypt_path))
+                        f.write(main_template.render(upper_bound=upper_bound, contention_factor=contention, sparsity=sparsity, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, query_min=1, query_max=query_max, use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
 
 
 def print_wl_names():
@@ -98,8 +98,8 @@ def print_wl_names():
 
             
 # generate_all_queries_for_experiment1()
-# generate_all_workloads_for_experiment1(is_local=False)
-# generate_all_workloads_for_experiment1(is_local=True)
+generate_all_workloads_for_experiment1(is_local=False)
+generate_all_workloads_for_experiment1(is_local=True)
 print_wl_names()
-# generate_all_workloads_for_experiment0(is_local=False)
-# generate_all_workloads_for_experiment0(is_local=True)
+generate_all_workloads_for_experiment0(is_local=False)
+generate_all_workloads_for_experiment0(is_local=True)
