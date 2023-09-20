@@ -1,0 +1,41 @@
+SchemaVersion: 2018-07-01
+Owner: "@10gen/server-security"
+Description: |
+  Queryable Encryption Range Experiment 1 -- Local Storage Footprint Test
+
+
+Clients:
+  MyPool:
+    QueryOptions:
+      maxPoolSize: 400
+
+
+Actors:
+  - Name: InsertActor
+    Type: CrudActor
+    Threads: 16
+    Database: &db genny_qerangebench_experiment1
+    ClientName: &pool MyPool
+    Phases:
+    - Repeat: 1
+      Collection: &coll OneFieldOneValue
+      Operations:
+      - OperationName: drop
+    - Repeat: 6250
+      Collection: *coll
+      MetricsName: "load"
+      Operations:
+      - OperationName: insertOne
+        OperationMetricsName: inserts
+        OperationCommand:
+          Document:
+            field1: 0
+            _id: {^Inc: {start: -100000, multiplier: 50000}}
+
+AutoRun:
+- When:
+    mongodb_setup:
+      $eq:
+      - single-replica-fle
+    branch_name:
+      $gte: v7.0
