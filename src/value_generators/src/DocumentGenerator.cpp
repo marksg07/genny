@@ -1128,7 +1128,7 @@ T convertToNumeric(convert<F, T>, const F& from)
 
 template<typename F> bsoncxx::decimal128 convertToNumeric(convert<F, bsoncxx::decimal128>, const F& from) {
     // mongocxx doesn't define nice converters from numeric types to decimal, so we convert first to string and then to decimal
-    return bsoncxx::decimal128(std::string(from));
+    return bsoncxx::decimal128(std::to_string(from));
 }
 
 bsoncxx::decimal128 convertToNumeric(convert<std::string, bsoncxx::decimal128>, const std::string& s) {
@@ -1888,7 +1888,7 @@ Out valueGenerator(const Node& node,
  * If adding a new parsers map, remember to insert its entries into `allParsers` at the end of this
  * lambda function.
  */
-const auto [allParsers, arrayParsers, dateParsers, doubleParsers, intParsers, stringParsers, int32Parsers] = [] () {
+const auto [allParsers, arrayParsers, dateParsers, doubleParsers, intParsers, stringParsers, int32Parsers, decimalParsers] = [] () {
     static std::map<std::string, Parser<UniqueAppendable>> allParsers {
         {"^Choose",
          [](const Node& node, GeneratorArgs generatorArgs) {
@@ -2056,6 +2056,15 @@ const auto [allParsers, arrayParsers, dateParsers, doubleParsers, intParsers, st
          }},
     };
 
+    // Set of parsers to look when we request a decimal parser
+    // see decimalGenerator
+    const static std::map<std::string, Parser<UniqueGenerator<bsoncxx::decimal128>>> decimalParsers{
+        {"^ConvertToInt32",
+         [](const Node& node, GeneratorArgs generatorArgs) {
+             return std::make_unique<NumericConversionGenerator<bsoncxx::decimal128>>(node, generatorArgs);
+         }},
+    };
+
     // Only nonexistent keys are inserted.
     allParsers.insert(arrayParsers.begin(), arrayParsers.end());
     allParsers.insert(dateParsers.begin(), dateParsers.end());
@@ -2063,8 +2072,9 @@ const auto [allParsers, arrayParsers, dateParsers, doubleParsers, intParsers, st
     allParsers.insert(intParsers.begin(), intParsers.end());
     allParsers.insert(stringParsers.begin(), stringParsers.end());
     allParsers.insert(int32Parsers.begin(), int32Parsers.end());
+    allParsers.insert(decimalParsers.begin(), decimalParsers.end());
 
-    return std::tie(allParsers, arrayParsers, dateParsers, doubleParsers, intParsers, stringParsers, int32Parsers);
+    return std::tie(allParsers, arrayParsers, dateParsers, doubleParsers, intParsers, stringParsers, int32Parsers, decimalParsers);
 } ();
 
 /**
@@ -2269,6 +2279,23 @@ UniqueGenerator<int32_t> int32Generator(const Node& node, GeneratorArgs generato
         return parserPair->first(node[parserPair->second], generatorArgs);
     }
     return std::make_unique<ConstantAppender<int32_t>>(node.to<int32_t>());
+}
+
+/**
+ * @param node
+ *   A decimal generator value (decimal scalars don't exist)
+ * @return
+ *   A `^ConvertToDecimal` generator (etc--see `decimalParsers`)
+ */
+UniqueGenerator<bsoncxx::decimal128> decimalGenerator(const Node& node, GeneratorArgs generatorArgs) {
+    if (auto parserPair = extractKnownParser(node, generatorArgs, decimalParsers)) {
+        // known parser type
+        return parserPair->first(node[parserPair->second], generatorArgs);
+    }
+    // We are never expecting a scalar, since decimal128 scalars don't exist.
+    std::stringstream msg;
+    msg << "Unknown parser: not an expected type " << node;
+    BOOST_THROW_EXCEPTION(UnknownParserException(msg.str()));
 }
 
 /**
