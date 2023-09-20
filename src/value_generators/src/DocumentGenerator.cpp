@@ -1180,18 +1180,22 @@ public:
             _generator = stringGenerator(node["from"], generatorArgs);
             return;
         } catch (const InvalidConversionException& e) {}
+          catch (const UnknownParserException& e) {}
         try {
             _generator = intGenerator(node["from"], generatorArgs);
             return;
         } catch (const InvalidConversionException& e) {}
+          catch (const UnknownParserException& e) {}
         try {
             _generator = doubleGenerator(node["from"], generatorArgs);
             return;
         } catch (const InvalidConversionException& e) {}
+          catch (const UnknownParserException& e) {}
         try {
             _generator = int32Generator(node["from"], generatorArgs);
             return;
         } catch (const InvalidConversionException& e) {}
+          catch (const UnknownParserException& e) {}
         BOOST_THROW_EXCEPTION(InvalidValueGeneratorSyntax(
             "Numeric conversion generator only supports conversions from string, double, int, and int32 types. The type of the \"from\" field did not match any of those types."));
     }
