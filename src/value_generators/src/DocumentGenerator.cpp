@@ -1113,6 +1113,21 @@ public:
     }
 };
 
+// Generator to convert from any numeric type or string to specific numeric type.
+const validFromGenerators = [decimalGenerator, ]
+template<typename T>
+class NumericConversionGenerator<T> : public Generator<T> {
+public:
+    NumericConversionGenerator(const Node& node, GeneratorArgs generatorArgs) {
+        try {
+            _gen = decimalGenerator(node["from"], generatorArgs);
+    }
+private:
+    union FromGenerator {
+        UniqueGenerator<
+    }
+}
+
 /** `{^ActorId: {}}` */
 class ActorIdIntGenerator : public Generator<int64_t> {
 public:
