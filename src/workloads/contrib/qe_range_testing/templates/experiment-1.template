@@ -62,8 +62,8 @@ Actors:
         OperationMetricsName: range_query
         OperationCommand:
           Filter: {field1: {
-              $gte: {^ChooseFromDataset:{"path": "{{ query_min_file }}", "sequential": true, "startFromLine": {{ t * query_count // query_threads }}}},
-              $lte: {^ChooseFromDataset:{"path": "{{ query_max_file }}", "sequential": true, "startFromLine": {{ t * query_count // query_threads }}}}
+              $gte: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ query_min_file }}", "sequential": true, "startFromLine": {{ t * query_count // query_threads }}}}}},
+              $lte: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ query_max_file }}", "sequential": true, "startFromLine": {{ t * query_count // query_threads }}}}}}
             }
           }
 
