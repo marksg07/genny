@@ -1165,18 +1165,22 @@ public:
             _generator = stringGenerator(node["from"], generatorArgs);
             return;
         } catch (const InvalidConversionException& e) {}
+          catch (const UnknownParserException& e) {}
         try {
             _generator = intGenerator(node["from"], generatorArgs);
             return;
         } catch (const InvalidConversionException& e) {}
+          catch (const UnknownParserException& e) {}
         try {
             _generator = doubleGenerator(node["from"], generatorArgs);
             return;
         } catch (const InvalidConversionException& e) {}
+          catch (const UnknownParserException& e) {}
         try {
             _generator = int32Generator(node["from"], generatorArgs);
             return;
         } catch (const InvalidConversionException& e) {}
+          catch (const UnknownParserException& e) {}
         BOOST_THROW_EXCEPTION(InvalidValueGeneratorSyntax(
             "Numeric conversion generator only supports conversions from string, double, int, and int32 types. The type of the \"from\" field did not match any of those types."));
     }
@@ -2059,7 +2063,7 @@ const auto [allParsers, arrayParsers, dateParsers, doubleParsers, intParsers, st
     // Set of parsers to look when we request a decimal parser
     // see decimalGenerator
     const static std::map<std::string, Parser<UniqueGenerator<bsoncxx::decimal128>>> decimalParsers{
-        {"^ConvertToInt32",
+        {"^ConvertToDecimal",
          [](const Node& node, GeneratorArgs generatorArgs) {
              return std::make_unique<NumericConversionGenerator<bsoncxx::decimal128>>(node, generatorArgs);
          }},
