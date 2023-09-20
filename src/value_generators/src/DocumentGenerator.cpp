@@ -2074,7 +2074,7 @@ const auto [allParsers, arrayParsers, dateParsers, doubleParsers, intParsers, st
     // Set of parsers to look when we request a decimal parser
     // see decimalGenerator
     const static std::map<std::string, Parser<UniqueGenerator<bsoncxx::decimal128>>> decimalParsers{
-        {"^ConvertToInt32",
+        {"^ConvertToDecimal",
          [](const Node& node, GeneratorArgs generatorArgs) {
              return std::make_unique<NumericConversionGenerator<bsoncxx::decimal128>>(node, generatorArgs);
          }},

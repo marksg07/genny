@@ -14,7 +14,7 @@ Encryption:
     EncryptionType: queryable
 
     QueryableEncryptedFields:
-      field1: { type: "int", queries: [{queryType: "rangePreview", min: 0, max: 511, contention: 0, sparsity: 1}] }
+      field1: { type: "decimal", queries: [{queryType: "rangePreview", min: 0, max: 511, contention: 0, sparsity: 1, precision: 1}] }
 
 Clients:
   EncryptedPool:
@@ -41,7 +41,7 @@ Actors:
         OperationMetricsName: inserts
         OperationCommand:
           Document:
-            field1: 0
+            field1: {^ConvertToDecimal: {from: 0}}
             _id: {^Inc: {start: -100000, multiplier: 50000}}
     - &nop {Nop: true}
 
@@ -62,13 +62,10 @@ Actors:
         OperationMetricsName: range_query
         OperationCommand:
           Filter: {field1: {
-              $gte: {^ToInt: {from: {^ChooseFromDataset:{"path": "./src/workloads/contrib/qe_range_testing/queries/experiment1_1_min_ub511.txt", "sequential": true, "startFromLine": 0}}}},
-              $lte: {^ToInt: {from: {^ChooseFromDataset:{"path": "./src/workloads/contrib/qe_range_testing/queries/experiment1_1_max_ub511.txt", "sequential": true, "startFromLine": 0}}}}
+              $gte: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "./src/workloads/contrib/qe_range_testing/queries/experiment1_1_min_ub511.txt", "sequential": true, "startFromLine": 0}}}},
+              $lte: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "./src/workloads/contrib/qe_range_testing/queries/experiment1_1_max_ub511.txt", "sequential": true, "startFromLine": 0}}}}
             }
           }
-
- 
-
 
   - Name: LoggingActor0
     Type: LoggingActor
