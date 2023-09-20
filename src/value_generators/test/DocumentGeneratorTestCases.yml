@@ -769,6 +769,12 @@ Tests:
     ThenReturns:
       - a: [1,2,3,4,5,5,5]
 
+  - Name: Convert to double
+    GivenTemplate:
+      a: {^ConvertToDouble: {from: "0.0"}}
+    ThenReturns:
+      - a: 1
+
   - Name: Double Generator
     GivenTemplate:
       a: {^RandomDouble: {min: 1.0, max: 20.0}}
