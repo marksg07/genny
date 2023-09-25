@@ -1,0 +1,101 @@
+SchemaVersion: 2018-07-01
+Owner: "@10gen/server-security"
+Description: |
+  Queryable Encryption Range Experiment 2
+
+Encryption:
+  {% if use_crypt_shared_lib %}
+  UseCryptSharedLib: true
+  CryptSharedLibPath: {{ crypt_shared_lib_path }}
+  {% endif %}
+  EncryptedCollections:
+  - Database: &encrypted_db genny_qerangebench_experiment2
+    Collection: &encrypted_coll ContiguousValuesFreqOne
+    EncryptionType: queryable
+
+    QueryableEncryptedFields:
+      f_sint32_1: { type: "int", queries: [{queryType: "rangePreview", contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
+      f_sint32_2: { type: "int", queries: [{queryType: "rangePreview", min: 1, max: 100000, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
+      f_bin64_1: { type: "double", queries: [{queryType: "rangePreview", contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
+      f_bin64_2: { type: "double", queries: [{queryType: "rangePreview", min: -100, max: 100, precision: 4, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
+      f_dec128_1: { type: "double", queries: [{queryType: "rangePreview", contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
+      f_dec128_2: { type: "double", queries: [{queryType: "rangePreview", min: -50000000, max: 50000000, precision: 4, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
+
+Clients:
+  EncryptedPool:
+    QueryOptions:
+      maxPoolSize: 400
+    EncryptionOptions:
+      KeyVaultDatabase: "keyvault"
+      KeyVaultCollection: "datakeys"
+      EncryptedCollections:
+      - genny_qerangebench_experiment2.ContiguousValuesFreqOne
+
+Actors:
+  - Name: InsertActor
+    Type: CrudActor
+    Threads: {{ insert_threads }}
+    Database: *encrypted_db
+    ClientName: &encrypted_pool EncryptedPool
+    Phases:
+    - Repeat: {{ document_count // insert_threads }}
+      Collection: *encrypted_coll
+      MetricsName: "load"
+      Operations:
+      - OperationName: insertOne
+        OperationMetricsName: inserts
+        OperationCommand:
+          Document:
+            f_sint32_1: {^Inc: {start: 1, multiplier: {{ document_count // insert_threads }}}}
+            f_sint32_2: {^Inc: {start: 1, multiplier: {{ document_count // insert_threads }}}}
+            f_bin64_1: {^Inc: {start: 1, multiplier: {{ document_count // insert_threads }}}}
+            f_bin64_2: {^Inc: {start: 1, multiplier: {{ document_count // insert_threads }}}} / 10000
+            f_dec128_1: {^Inc: {start: 1, multiplier: {{ document_count // insert_threads }}}}
+            f_dec128_2: {^Inc: {start: 1, multiplier: {{ document_count // insert_threads }}}} / 10000
+
+            _id: {^Inc: {start: 0, multiplier: {{ document_count // insert_threads }}}}
+    - &nop {Nop: true}
+
+  # We have a separate single-thread actor, each of which performs a different 1/(query_threads) of the queries.
+  {%if False %}
+  {% for t in range(query_threads) %}
+  - Name: PreDefinedRangeQueryActor_Thread{{ t }}
+    Type: CrudActor
+    Threads: 1
+    Database: *encrypted_db
+    ClientName: *encrypted_pool
+    Phases:
+    - *nop
+    - Repeat: {{ query_count // query_threads }}
+      Collection: *encrypted_coll
+      MetricsName: "query"
+      Operations:
+      - OperationName: find
+        OperationMetricsName: range_query
+        OperationCommand:
+          Filter: {field1: {
+              $gte: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ query_min_file }}", "sequential": true, "startFromLine": {{ t * query_count // query_threads }}}}}},
+              $lte: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ query_max_file }}", "sequential": true, "startFromLine": {{ t * query_count // query_threads }}}}}}
+            }
+          }
+
+ {% endfor %}
+ {% endif %}
+
+
+  - Name: LoggingActor0
+    Type: LoggingActor
+    Threads: 1
+    Phases:
+      - Nop: true
+      - Phase: 1
+        LogEvery: 5 minutes
+        Blocking: None
+
+AutoRun:
+- When:
+    mongodb_setup:
+      $eq:
+      - single-replica-fle
+    branch_name:
+      $gte: v7.0

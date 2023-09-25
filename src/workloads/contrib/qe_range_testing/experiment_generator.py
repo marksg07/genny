@@ -95,11 +95,27 @@ def print_wl_names():
                 for small in [False, True]:
                     print(fmt.format(f'experiment0_c{contention}_s{sparsity}_ub{upper_bound}_{"small" if small else "big"}'))
                      
-
+def generate_all_workloads_for_experiment2(is_local):
+    if is_local: 
+        basedir = './src/workloads/contrib/qe_range_testing/'
+    else: 
+        basedir = './src/genny/src/workloads/contrib/qe_range_testing/'
+    if is_local:
+        crypt_path = '/home/ubuntu/mongo_crypt/lib/mongo_crypt_v1.so'
+    else:
+        crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
+    wldir = 'local' if is_local else 'evergreen'
+    main_template = env.get_template("experiment-2.template")
+    for sparsity in [1, 2, 3, 4]:
+        for contention in [0, 4, 8]: 
+            with open(f'workloads/{wldir}/experiment2_c{contention}_s{sparsity}.yml', 'w+') as f:
+                f.write(main_template.render(contention_factor=contention, sparsity=sparsity, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, query_min_file=basedir + minf, query_max_file=basedir + maxf, use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
             
 # generate_all_queries_for_experiment1()
-generate_all_workloads_for_experiment1(is_local=False)
-generate_all_workloads_for_experiment1(is_local=True)
-print_wl_names()
-generate_all_workloads_for_experiment0(is_local=False)
-generate_all_workloads_for_experiment0(is_local=True)
+# generate_all_workloads_for_experiment1(is_local=False)
+# generate_all_workloads_for_experiment1(is_local=True)
+# print_wl_names()
+# generate_all_workloads_for_experiment0(is_local=False)
+# generate_all_workloads_for_experiment0(is_local=True)
+
+generate_all_workloads_for_experiment2(is_local=True)
