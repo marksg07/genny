@@ -14,12 +14,12 @@ Encryption:
     EncryptionType: queryable
 
     QueryableEncryptedFields:
-      f_sint32_1: { type: "int", queries: [{queryType: "rangePreview", contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
+      f_sint32_1: { type: "int", queries: [{queryType: "rangePreview", min: -2147483648, max: 2147483647, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
       f_sint32_2: { type: "int", queries: [{queryType: "rangePreview", min: 1, max: 100000, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
       f_bin64_1: { type: "double", queries: [{queryType: "rangePreview", contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
       f_bin64_2: { type: "double", queries: [{queryType: "rangePreview", min: -100, max: 100, precision: 4, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
-      f_dec128_1: { type: "double", queries: [{queryType: "rangePreview", contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
-      f_dec128_2: { type: "double", queries: [{queryType: "rangePreview", min: -50000000, max: 50000000, precision: 4, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
+      f_dec128_1: { type: "decimal", queries: [{queryType: "rangePreview", contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
+      f_dec128_2: { type: "decimal", queries: [{queryType: "rangePreview", min: -50000000, max: 50000000, precision: 4, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
 
 Clients:
   EncryptedPool:
@@ -32,32 +32,34 @@ Clients:
       - genny_qerangebench_experiment2.ContiguousValuesFreqOne
 
 Actors:
-  - Name: InsertActor
-    Type: CrudActor
-    Threads: {{ insert_threads }}
-    Database: *encrypted_db
-    ClientName: &encrypted_pool EncryptedPool
+  - Name: Insert
+    Type: Loader
+    Threads: 1
     Phases:
-    - Repeat: {{ document_count // insert_threads }}
-      Collection: *encrypted_coll
-      MetricsName: "load"
-      Operations:
-      - OperationName: insertOne
-        OperationMetricsName: inserts
-        OperationCommand:
+      OnlyActiveInPhases:
+        Active: [0]
+        NopInPhasesUpTo: 1
+        PhaseConfig:
+          Repeat: 1
+          Database: *encrypted_db
+          ClientName: &encrypted_pool EncryptedPool
+          Collection: *encrypted_coll
+          MultipleThreadsPerCollection: false
+          Threads: 1
+          CollectionCount: 1
+          DocumentCount: {{ document_count }}
+          BatchSize: 1000
           Document:
-            f_sint32_1: {^Inc: {start: 1, multiplier: {{ document_count // insert_threads }}}}
-            f_sint32_2: {^Inc: {start: 1, multiplier: {{ document_count // insert_threads }}}}
-            f_bin64_1: {^Inc: {start: 1, multiplier: {{ document_count // insert_threads }}}}
-            f_bin64_2: {^Inc: {start: 1, multiplier: {{ document_count // insert_threads }}}} / 10000
-            f_dec128_1: {^Inc: {start: 1, multiplier: {{ document_count // insert_threads }}}}
-            f_dec128_2: {^Inc: {start: 1, multiplier: {{ document_count // insert_threads }}}} / 10000
-
+            f_sint32_1: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ 0 * document_count // insert_threads }}}}}}
+            f_sint32_2: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ 0 * document_count // insert_threads }}}}}}
+            f_bin64_1: {^ConvertToDouble: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ 0 * document_count // insert_threads }}}}}}
+            f_bin64_2: {^ConvertToDouble: {from: {^ChooseFromDataset:{"path": "{{ tenthoufile }}", "sequential": true, "startFromLine": {{ 0 * document_count // insert_threads }}}}}}
+            f_dec128_1: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ 0 * document_count // insert_threads }}}}}}
+            f_dec128_2: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "{{ tenthoufile }}", "sequential": true, "startFromLine": {{ 0 * document_count // insert_threads }}}}}}
             _id: {^Inc: {start: 0, multiplier: {{ document_count // insert_threads }}}}
-    - &nop {Nop: true}
 
+{% if False %}
   # We have a separate single-thread actor, each of which performs a different 1/(query_threads) of the queries.
-  {%if False %}
   {% for t in range(query_threads) %}
   - Name: PreDefinedRangeQueryActor_Thread{{ t }}
     Type: CrudActor
@@ -87,7 +89,7 @@ Actors:
     Type: LoggingActor
     Threads: 1
     Phases:
-      - Nop: true
+      - {Nop: true}
       - Phase: 1
         LogEvery: 5 minutes
         Blocking: None

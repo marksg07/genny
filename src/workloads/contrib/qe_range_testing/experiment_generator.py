@@ -50,8 +50,8 @@ def generate_all_workloads_for_experiment1(is_local):
     else:
         crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
     wldir = 'local' if is_local else 'evergreen'
-    main_template = env.get_template("experiment-1.template")
-    storage_template = env.get_template("experiment-1-storage.template")
+    main_template = env.get_template("experiment-1.yml.j2")
+    storage_template = env.get_template("experiment-1-storage.yml.j2")
     for upper_bound in [2**9-1, 2**13-1, 2**17-1, 2**31-1]:
         minf, maxf = query_minmax_file_names(upper_bound)
         for sparsity in [1, 2, 3, 4]:
@@ -67,7 +67,7 @@ def generate_all_workloads_for_experiment0(is_local):
     else:
         crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
     wldir = 'local' if is_local else 'evergreen'
-    main_template = env.get_template("experiment-0.template")
+    main_template = env.get_template("experiment-0.yml.j2")
     for upper_bound in [2**9-1, 2**31-1]:
         for sparsity in [1, 4]:
             for contention in [0, 8]: 
@@ -95,7 +95,19 @@ def print_wl_names():
                 for small in [False, True]:
                     print(fmt.format(f'experiment0_c{contention}_s{sparsity}_ub{upper_bound}_{"small" if small else "big"}'))
                      
+tenthoufile = 'misc/tenthousandths.txt'
+onesfile = 'misc/ones.txt'
+def generate_numbers_file():
+    r = [i * 0.0001 for i in range(1, 100001)]
+    with open(tenthoufile, 'w+') as f:
+        f.write('\n'.join([str(round(i,4)) for i in r]))
+    with open(onesfile, 'w+') as f:
+        f.write('\n'.join([str(i) for i in range(1, 100001)]))
+    #for i in range(0.0001, 10.000001, 0.0001):
+
+                    
 def generate_all_workloads_for_experiment2(is_local):
+    print(f'Generating experiment 2 workloads, is_local={is_local}')
     if is_local: 
         basedir = './src/workloads/contrib/qe_range_testing/'
     else: 
@@ -105,11 +117,11 @@ def generate_all_workloads_for_experiment2(is_local):
     else:
         crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
     wldir = 'local' if is_local else 'evergreen'
-    main_template = env.get_template("experiment-2.template")
+    main_template = env.get_template("experiment-2.yml.j2")
     for sparsity in [1, 2, 3, 4]:
         for contention in [0, 4, 8]: 
             with open(f'workloads/{wldir}/experiment2_c{contention}_s{sparsity}.yml', 'w+') as f:
-                f.write(main_template.render(contention_factor=contention, sparsity=sparsity, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, query_min_file=basedir + minf, query_max_file=basedir + maxf, use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
+                f.write(main_template.render(contention_factor=contention, sparsity=sparsity, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path, tenthoufile=basedir+tenthoufile, onesfile=basedir+onesfile))
             
 # generate_all_queries_for_experiment1()
 # generate_all_workloads_for_experiment1(is_local=False)
@@ -118,4 +130,5 @@ def generate_all_workloads_for_experiment2(is_local):
 # generate_all_workloads_for_experiment0(is_local=False)
 # generate_all_workloads_for_experiment0(is_local=True)
 
+#generate_numbers_file()
 generate_all_workloads_for_experiment2(is_local=True)
