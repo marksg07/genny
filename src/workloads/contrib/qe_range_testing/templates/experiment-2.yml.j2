@@ -3,14 +3,20 @@ Owner: "@10gen/server-security"
 Description: |
   Queryable Encryption Range Experiment 2
 
+GlobalDefaults:
+  Database: &encrypted_db genny_qerangebench_experiment2
+  Collection: &encrypted_coll ContiguousValuesFreqOne
+  ClientName: &encrypted_pool EncryptedPool
+  Nop: &nop {Nop: true}
+
 Encryption:
   {% if use_crypt_shared_lib %}
   UseCryptSharedLib: true
   CryptSharedLibPath: {{ crypt_shared_lib_path }}
   {% endif %}
   EncryptedCollections:
-  - Database: &encrypted_db genny_qerangebench_experiment2
-    Collection: &encrypted_coll ContiguousValuesFreqOne
+  - Database: *encrypted_db
+    Collection: *encrypted_coll
     EncryptionType: queryable
 
     QueryableEncryptedFields:
@@ -32,64 +38,56 @@ Clients:
       - genny_qerangebench_experiment2.ContiguousValuesFreqOne
 
 Actors:
-  - Name: Insert
-    Type: Loader
+{% for t in range(insert_threads) %}
+  - Name: InsertActor_Thread{{ t }}
+    Type: CrudActor
     Threads: 1
+    Database: *encrypted_db
+    ClientName: *encrypted_pool
     Phases:
-      OnlyActiveInPhases:
-        Active: [0]
-        NopInPhasesUpTo: 1
-        PhaseConfig:
-          Repeat: 1
-          Database: *encrypted_db
-          ClientName: &encrypted_pool EncryptedPool
-          Collection: *encrypted_coll
-          MultipleThreadsPerCollection: false
-          Threads: 1
-          CollectionCount: 1
-          DocumentCount: {{ document_count }}
-          BatchSize: 1000
+    - Repeat: {{ document_count // insert_threads }}
+      Collection: *encrypted_coll
+      MetricsName: "load"
+      Operations:
+      - OperationName: insertOne
+        OperationMetricsName: inserts
+        OperationCommand:
           Document:
-            f_sint32_1: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ 0 * document_count // insert_threads }}}}}}
-            f_sint32_2: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ 0 * document_count // insert_threads }}}}}}
-            f_bin64_1: {^ConvertToDouble: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ 0 * document_count // insert_threads }}}}}}
-            f_bin64_2: {^ConvertToDouble: {from: {^ChooseFromDataset:{"path": "{{ tenthoufile }}", "sequential": true, "startFromLine": {{ 0 * document_count // insert_threads }}}}}}
-            f_dec128_1: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ 0 * document_count // insert_threads }}}}}}
-            f_dec128_2: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "{{ tenthoufile }}", "sequential": true, "startFromLine": {{ 0 * document_count // insert_threads }}}}}}
+            f_sint32_1: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
+            f_sint32_2: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
+            f_bin64_1: {^ConvertToDouble: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
+            f_bin64_2: {^ConvertToDouble: {from: {^ChooseFromDataset:{"path": "{{ tenthoufile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
+            f_dec128_1: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
+            f_dec128_2: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "{{ tenthoufile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
             _id: {^Inc: {start: 0, multiplier: {{ document_count // insert_threads }}}}
+    - *nop
+{% endfor %}
 
-{% if False %}
-  # We have a separate single-thread actor, each of which performs a different 1/(query_threads) of the queries.
-  {% for t in range(query_threads) %}
-  - Name: PreDefinedRangeQueryActor_Thread{{ t }}
+  - Name: PreDefinedRangeQueryActor
     Type: CrudActor
     Threads: 1
     Database: *encrypted_db
     ClientName: *encrypted_pool
     Phases:
     - *nop
-    - Repeat: {{ query_count // query_threads }}
+    - Repeat: {{ query_count }}
       Collection: *encrypted_coll
       MetricsName: "query"
       Operations:
       - OperationName: find
         OperationMetricsName: range_query
         OperationCommand:
-          Filter: {field1: {
-              $gte: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ query_min_file }}", "sequential": true, "startFromLine": {{ t * query_count // query_threads }}}}}},
-              $lte: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ query_max_file }}", "sequential": true, "startFromLine": {{ t * query_count // query_threads }}}}}}
+          Filter: { {{ query_field }}: {
+              $gte: {^ConvertTo{{query_field_type}}: {from: {^ChooseFromDataset:{"path": "{{ query_min_file }}", "sequential": true}}}},
+              $lte: {^ConvertTo{{query_field_type}}: {from: {^ChooseFromDataset:{"path": "{{ query_max_file }}", "sequential": true}}}}
             }
           }
-
- {% endfor %}
- {% endif %}
-
 
   - Name: LoggingActor0
     Type: LoggingActor
     Threads: 1
     Phases:
-      - {Nop: true}
+      - *nop
       - Phase: 1
         LogEvery: 5 minutes
         Blocking: None

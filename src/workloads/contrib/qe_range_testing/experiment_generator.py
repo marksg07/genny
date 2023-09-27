@@ -4,10 +4,10 @@ env = Environment(
     loader=PackageLoader("qe_range_testing"),
     autoescape=select_autoescape()
 )
-insert_threads = 16
+insert_threads = 8
 query_threads = 1
-document_count = 100000
-query_count = 100000
+document_count = 200
+query_count = 100
 assert document_count % insert_threads == 0
 assert query_count % query_threads == 0
 
@@ -39,6 +39,28 @@ def generate_all_queries_for_experiment1():
         queries = generate_queries(query_count, upper_bound)
         minf, maxf = query_minmax_file_names(upper_bound)
         export_queries(queries, minf, maxf)
+
+def generate_exp2_queries(n, lb, ub, sel, mult):
+    queries = []
+    for _ in range(n):
+        mn = randint(lb, ub + 1 - sel)
+        mx = mn + sel - 1
+        queries.append((mn * mult, mx * mult))
+    return queries
+
+def experiment2_query_file(minmax, qtype, sel, spacing):
+    return f'queries/experiment2_{minmax}_{qtype}_sel{sel}_{spacing}.txt'
+
+def generate_all_queries_for_experiment2():
+    print('Generating exp 2 queries')
+    for (qtype, qnum) in [('fixed', 1), ('rand', query_count)]:
+        for sel in [5, 100, 1000, 10000]:
+            for (spacing, multiplier) in [('ones', 1), ('tenthousandths', 0.0001)]:
+                queries = generate_exp2_queries(qnum, 1, 100000, sel, multiplier)
+                with open(experiment2_query_file('min', qtype, sel, spacing), 'w') as f:
+                    f.writelines('\n'.join([str(round(query[0], 4)) for query in queries]))
+                with open(experiment2_query_file('max', qtype, sel, spacing), 'w') as f:
+                    f.writelines('\n'.join([str(round(query[1], 4)) for query in queries]))
 
 def generate_all_workloads_for_experiment1(is_local):
     if is_local: 
@@ -105,7 +127,15 @@ def generate_numbers_file():
         f.write('\n'.join([str(i) for i in range(1, 100001)]))
     #for i in range(0.0001, 10.000001, 0.0001):
 
-                    
+exp2fields = [
+    ('f_sint32_1', 'Int32', 'ones'),
+    ('f_sint32_2', 'Int32', 'ones'),
+    ('f_bin64_1', 'Double', 'ones'),
+    ('f_bin64_2', 'Double', 'tenthousandths'),
+    ('f_dec128_1', 'Decimal', 'ones'),
+    ('f_dec128_2', 'Decimal', 'tenthousandths'),
+]
+
 def generate_all_workloads_for_experiment2(is_local):
     print(f'Generating experiment 2 workloads, is_local={is_local}')
     if is_local: 
@@ -118,10 +148,22 @@ def generate_all_workloads_for_experiment2(is_local):
         crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
     wldir = 'local' if is_local else 'evergreen'
     main_template = env.get_template("experiment-2.yml.j2")
-    for sparsity in [1, 2, 3, 4]:
-        for contention in [0, 4, 8]: 
-            with open(f'workloads/{wldir}/experiment2_c{contention}_s{sparsity}.yml', 'w+') as f:
-                f.write(main_template.render(contention_factor=contention, sparsity=sparsity, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path, tenthoufile=basedir+tenthoufile, onesfile=basedir+onesfile))
+    for sel in [5, 100, 1000, 10000]: # 4
+        for qtype in ['fixed', 'rand']: # 8
+            for (qfield, qfieldtype, spacing) in exp2fields: # 48
+                minfile = experiment2_query_file('min', qtype, sel, spacing)
+                maxfile = experiment2_query_file('max', qtype, sel, spacing)
+                # encrypted tests
+                for sparsity in [1, 2, 3, 4]: # 4
+                    for contention in [0, 4, 8]: # 12
+                        with open(f'workloads/{wldir}/experiment2_{qfield}_{qtype}_sel{sel}_sp{sparsity}_cf{contention}.yml', 'w') as f:
+                            f.write(main_template.render(contention_factor=contention, sparsity=sparsity, 
+                                            document_count=document_count, query_count=query_count, 
+                                            insert_threads=insert_threads,
+                                            use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path, 
+                                            tenthoufile=basedir+tenthoufile, onesfile=basedir+onesfile,
+                                            query_field=qfield, query_field_type=qfieldtype,
+                                            query_min_file=basedir+minfile, query_max_file=basedir+maxfile))
             
 # generate_all_queries_for_experiment1()
 # generate_all_workloads_for_experiment1(is_local=False)
@@ -131,4 +173,5 @@ def generate_all_workloads_for_experiment2(is_local):
 # generate_all_workloads_for_experiment0(is_local=True)
 
 #generate_numbers_file()
+#generate_all_queries_for_experiment2()
 generate_all_workloads_for_experiment2(is_local=True)
