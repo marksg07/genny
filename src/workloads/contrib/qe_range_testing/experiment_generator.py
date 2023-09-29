@@ -136,6 +136,15 @@ exp2fields = [
     ('f_dec128_2', 'Decimal', 'tenthousandths'),
 ]
 
+class Experiment2Experiment:
+    def __init__(self, field_name, field_type, spacing, query_type, selectivity, basedir):
+        self.field_name = field_name
+        self.field_type = field_type
+        self.query_type = query_type
+        self.selectivity = selectivity
+        self.min_file = basedir + experiment2_query_file('min', query_type, selectivity, spacing)
+        self.max_file = basedir + experiment2_query_file('max', query_type, selectivity, spacing)
+
 def generate_all_workloads_for_experiment2(is_local):
     print(f'Generating experiment 2 workloads, is_local={is_local}')
     if is_local: 
@@ -148,22 +157,18 @@ def generate_all_workloads_for_experiment2(is_local):
         crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
     wldir = 'local' if is_local else 'evergreen'
     main_template = env.get_template("experiment-2.yml.j2")
-    for sel in [5, 100, 1000, 10000]: # 4
-        for qtype in ['fixed', 'rand']: # 8
-            for (qfield, qfieldtype, spacing) in exp2fields: # 48
-                minfile = experiment2_query_file('min', qtype, sel, spacing)
-                maxfile = experiment2_query_file('max', qtype, sel, spacing)
-                # encrypted tests
-                for sparsity in [1, 2, 3, 4]: # 4
-                    for contention in [0, 4, 8]: # 12
-                        with open(f'workloads/{wldir}/experiment2_{qfield}_{qtype}_sel{sel}_sp{sparsity}_cf{contention}.yml', 'w') as f:
-                            f.write(main_template.render(contention_factor=contention, sparsity=sparsity, 
-                                            document_count=document_count, query_count=query_count, 
-                                            insert_threads=insert_threads,
-                                            use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path, 
-                                            tenthoufile=basedir+tenthoufile, onesfile=basedir+onesfile,
-                                            query_field=qfield, query_field_type=qfieldtype,
-                                            query_min_file=basedir+minfile, query_max_file=basedir+maxfile))
+    experiments = [Experiment2Experiment(name, type, spacing, qtype, sel, basedir)
+                    for name, type, spacing in exp2fields for qtype in ['fixed', 'rand'] for sel in [5, 100, 1000, 10000]]
+    # encrypted tests
+    for sparsity in [1, 2, 3, 4]: # 4
+        for contention in [0, 4, 8]: # 12
+            with open(f'workloads/{wldir}/experiment2_sp{sparsity}_cf{contention}.yml', 'w') as f:
+                f.write(main_template.render(contention_factor=contention, sparsity=sparsity, 
+                                document_count=document_count, query_count=query_count, 
+                                insert_threads=insert_threads,
+                                use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path, 
+                                tenthoufile=basedir+tenthoufile, onesfile=basedir+onesfile,
+                                experiments=experiments))
             
 # generate_all_queries_for_experiment1()
 # generate_all_workloads_for_experiment1(is_local=False)

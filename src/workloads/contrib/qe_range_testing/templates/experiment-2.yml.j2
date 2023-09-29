@@ -8,6 +8,7 @@ GlobalDefaults:
   Collection: &encrypted_coll ContiguousValuesFreqOne
   ClientName: &encrypted_pool EncryptedPool
   Nop: &nop {Nop: true}
+  LastPhase: &last_phase {{ experiments|length }}
 
 Encryption:
   {% if use_crypt_shared_lib %}
@@ -45,23 +46,27 @@ Actors:
     Database: *encrypted_db
     ClientName: *encrypted_pool
     Phases:
-    - Repeat: {{ document_count // insert_threads }}
-      Collection: *encrypted_coll
-      MetricsName: "load"
-      Operations:
-      - OperationName: insertOne
-        OperationMetricsName: inserts
-        OperationCommand:
-          Document:
-            f_sint32_1: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
-            f_sint32_2: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
-            f_bin64_1: {^ConvertToDouble: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
-            f_bin64_2: {^ConvertToDouble: {from: {^ChooseFromDataset:{"path": "{{ tenthoufile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
-            f_dec128_1: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
-            f_dec128_2: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "{{ tenthoufile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
-            _id: {^Inc: {start: 0, multiplier: {{ document_count // insert_threads }}}}
-    - *nop
+      OnlyActiveInPhases:
+        Active: [0]
+        NopInPhasesUpTo: *last_phase
+        PhaseConfig:
+          Repeat: {{ document_count // insert_threads }}
+          Collection: *encrypted_coll
+          MetricsName: "load"
+          Operations:
+          - OperationName: insertOne
+            OperationMetricsName: inserts
+            OperationCommand:
+              Document:
+                f_sint32_1: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
+                f_sint32_2: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
+                f_bin64_1: {^ConvertToDouble: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
+                f_bin64_2: {^ConvertToDouble: {from: {^ChooseFromDataset:{"path": "{{ tenthoufile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
+                f_dec128_1: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
+                f_dec128_2: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "{{ tenthoufile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
+                _id: {^Inc: {start: 0, multiplier: {{ document_count // insert_threads }}}}
 {% endfor %}
+
 
   - Name: PreDefinedRangeQueryActor
     Type: CrudActor
@@ -70,25 +75,26 @@ Actors:
     ClientName: *encrypted_pool
     Phases:
     - *nop
+{% for experiment in experiments %}
     - Repeat: {{ query_count }}
       Collection: *encrypted_coll
       MetricsName: "query"
       Operations:
       - OperationName: find
-        OperationMetricsName: range_query
+        OperationMetricsName: range_query_{{experiment.field_name}}_{{experiment.query_type}}_sel{{experiment.selectivity}}
         OperationCommand:
-          Filter: { {{ query_field }}: {
-              $gte: {^ConvertTo{{query_field_type}}: {from: {^ChooseFromDataset:{"path": "{{ query_min_file }}", "sequential": true}}}},
-              $lte: {^ConvertTo{{query_field_type}}: {from: {^ChooseFromDataset:{"path": "{{ query_max_file }}", "sequential": true}}}}
+          Filter: { {{experiment.field_name}}: {
+              $gte: {^ConvertTo{{experiment.field_type}}: {from: {^ChooseFromDataset:{"path": "{{ experiment.min_file }}", "sequential": true}}}},
+              $lte: {^ConvertTo{{experiment.field_type}}: {from: {^ChooseFromDataset:{"path": "{{ experiment.max_file }}", "sequential": true}}}}
             }
           }
+{% endfor %}
 
   - Name: LoggingActor0
     Type: LoggingActor
     Threads: 1
     Phases:
-      - *nop
-      - Phase: 1
+      - Phase: 0..{{ experiments|length }}
         LogEvery: 5 minutes
         Blocking: None
 
