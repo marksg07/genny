@@ -4,20 +4,21 @@ Description: |
   Queryable Encryption Range Experiment 2
 
 GlobalDefaults:
-  Database: &encrypted_db genny_qerangebench_experiment2
-  Collection: &encrypted_coll ContiguousValuesFreqOne
-  ClientName: &encrypted_pool EncryptedPool
+  Database: &test_db genny_qerangebench_experiment2
+  Collection: &test_coll ContiguousValuesFreqOne
+  ClientName: &test_pool TestPool
   Nop: &nop {Nop: true}
   LastPhase: &last_phase {{ experiments|length }}
 
+{% if encrypt %}
 Encryption:
   {% if use_crypt_shared_lib %}
   UseCryptSharedLib: true
   CryptSharedLibPath: {{ crypt_shared_lib_path }}
   {% endif %}
   EncryptedCollections:
-  - Database: *encrypted_db
-    Collection: *encrypted_coll
+  - Database: *test_db
+    Collection: *test_coll
     EncryptionType: queryable
 
     QueryableEncryptedFields:
@@ -27,31 +28,33 @@ Encryption:
       f_bin64_2: { type: "double", queries: [{queryType: "rangePreview", min: -100, max: 100, precision: 4, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
       f_dec128_1: { type: "decimal", queries: [{queryType: "rangePreview", contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
       f_dec128_2: { type: "decimal", queries: [{queryType: "rangePreview", min: -50000000, max: 50000000, precision: 4, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
-
+{% endif %}
 Clients:
-  EncryptedPool:
+  TestPool:
     QueryOptions:
       maxPoolSize: 400
+{% if encrypt %}
     EncryptionOptions:
       KeyVaultDatabase: "keyvault"
       KeyVaultCollection: "datakeys"
       EncryptedCollections:
       - genny_qerangebench_experiment2.ContiguousValuesFreqOne
+{% endif %}
 
 Actors:
 {% for t in range(insert_threads) %}
   - Name: InsertActor_Thread{{ t }}
     Type: CrudActor
     Threads: 1
-    Database: *encrypted_db
-    ClientName: *encrypted_pool
+    Database: *test_db
+    ClientName: *test_pool
     Phases:
       OnlyActiveInPhases:
         Active: [0]
         NopInPhasesUpTo: *last_phase
         PhaseConfig:
           Repeat: {{ document_count // insert_threads }}
-          Collection: *encrypted_coll
+          Collection: *test_coll
           MetricsName: "load"
           Operations:
           - OperationName: insertOne
@@ -71,13 +74,13 @@ Actors:
   - Name: PreDefinedRangeQueryActor
     Type: CrudActor
     Threads: 1
-    Database: *encrypted_db
-    ClientName: *encrypted_pool
+    Database: *test_db
+    ClientName: *test_pool
     Phases:
     - *nop
 {% for experiment in experiments %}
     - Repeat: {{ query_count }}
-      Collection: *encrypted_coll
+      Collection: *test_coll
       MetricsName: "query"
       Operations:
       - OperationName: find

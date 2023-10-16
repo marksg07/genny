@@ -6,8 +6,8 @@ env = Environment(
 )
 insert_threads = 8
 query_threads = 1
-document_count = 200
-query_count = 100
+document_count = 100000
+query_count = 10000
 assert document_count % insert_threads == 0
 assert query_count % query_threads == 0
 
@@ -163,12 +163,20 @@ def generate_all_workloads_for_experiment2(is_local):
     for sparsity in [1, 2, 3, 4]: # 4
         for contention in [0, 4, 8]: # 12
             with open(f'workloads/{wldir}/experiment2_sp{sparsity}_cf{contention}.yml', 'w') as f:
-                f.write(main_template.render(contention_factor=contention, sparsity=sparsity, 
+                f.write(main_template.render(encrypt=True,
+                                contention_factor=contention, sparsity=sparsity, 
                                 document_count=document_count, query_count=query_count, 
                                 insert_threads=insert_threads,
                                 use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path, 
                                 tenthoufile=basedir+tenthoufile, onesfile=basedir+onesfile,
                                 experiments=experiments))
+    with open(f'workloads/{wldir}/experiment2_unencrypted.yml', 'w') as f:
+        f.write(main_template.render(encrypt=False,
+                        document_count=document_count, query_count=query_count, 
+                        insert_threads=insert_threads,
+                        use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path, 
+                        tenthoufile=basedir+tenthoufile, onesfile=basedir+onesfile,
+                        experiments=experiments))
             
 # generate_all_queries_for_experiment1()
 # generate_all_workloads_for_experiment1(is_local=False)
@@ -180,3 +188,4 @@ def generate_all_workloads_for_experiment2(is_local):
 #generate_numbers_file()
 #generate_all_queries_for_experiment2()
 generate_all_workloads_for_experiment2(is_local=True)
+generate_all_workloads_for_experiment2(is_local=False)
