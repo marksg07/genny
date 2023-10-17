@@ -20,14 +20,18 @@ Encryption:
   - Database: *test_db
     Collection: *test_coll
     EncryptionType: queryable
-
+    {% set field_defs = {
+      "f_sint32_1": 'f_sint32_1: { type: "int", queries: [{queryType: "rangePreview", min: -2147483648, max: 2147483647, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }',
+      "f_sint32_2": 'f_sint32_2: { type: "int", queries: [{queryType: "rangePreview", min: 1, max: 100000, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }',
+      "f_bin64_1": 'f_bin64_1: { type: "double", queries: [{queryType: "rangePreview", contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }',
+      "f_bin64_2": 'f_bin64_2: { type: "double", queries: [{queryType: "rangePreview", min: -100, max: 100, precision: 4, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }',
+      "f_dec128_1": 'f_dec128_1: { type: "decimal", queries: [{queryType: "rangePreview", contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }',
+      "f_dec128_2": 'f_dec128_2: { type: "decimal", queries: [{queryType: "rangePreview", min: -50000000, max: 50000000, precision: 4, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }',
+    } %}
     QueryableEncryptedFields:
-      f_sint32_1: { type: "int", queries: [{queryType: "rangePreview", min: -2147483648, max: 2147483647, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
-      f_sint32_2: { type: "int", queries: [{queryType: "rangePreview", min: 1, max: 100000, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
-      f_bin64_1: { type: "double", queries: [{queryType: "rangePreview", contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
-      f_bin64_2: { type: "double", queries: [{queryType: "rangePreview", min: -100, max: 100, precision: 4, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
-      f_dec128_1: { type: "decimal", queries: [{queryType: "rangePreview", contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
-      f_dec128_2: { type: "decimal", queries: [{queryType: "rangePreview", min: -50000000, max: 50000000, precision: 4, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }
+{% for field in fields %}
+      {{ field_defs[field] }}{% endfor %}
+
 {% endif %}
 Clients:
   TestPool:
@@ -60,13 +64,17 @@ Actors:
           - OperationName: insertOne
             OperationMetricsName: inserts
             OperationCommand:
+              {% set field_inserts = {
+                "f_sint32_1": 'f_sint32_1: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "%s", "sequential": true, "startFromLine": %d}}}}' % (onesfile, t * document_count // insert_threads ),
+                "f_sint32_2": 'f_sint32_2: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "%s", "sequential": true, "startFromLine": %d}}}}' % (onesfile, t * document_count // insert_threads ),
+                "f_bin64_1": 'f_bin64_1: {^ConvertToDouble: {from: {^ChooseFromDataset:{"path": "%s", "sequential": true, "startFromLine": %d}}}}' % (onesfile, t * document_count // insert_threads ),
+                "f_bin64_2": 'f_bin64_2: {^ConvertToDouble: {from: {^ChooseFromDataset:{"path": "%s", "sequential": true, "startFromLine": %d}}}}' % (tenthoufile, t * document_count // insert_threads ),
+                "f_dec128_1": 'f_dec128_1: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "%s", "sequential": true, "startFromLine": %d}}}}' % (onesfile, t * document_count // insert_threads ),
+                "f_dec128_2": 'f_dec128_2: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "%s", "sequential": true, "startFromLine": %d}}}}' % (tenthoufile, t * document_count // insert_threads ),
+              } %}
               Document:
-                f_sint32_1: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
-                f_sint32_2: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
-                f_bin64_1: {^ConvertToDouble: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
-                f_bin64_2: {^ConvertToDouble: {from: {^ChooseFromDataset:{"path": "{{ tenthoufile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
-                f_dec128_1: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "{{ onesfile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
-                f_dec128_2: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "{{ tenthoufile }}", "sequential": true, "startFromLine": {{ t * document_count // insert_threads }}}}}}
+{% for field in fields %}
+                {{ field_inserts[field] }}{% endfor %}
                 _id: {^Inc: {start: 0, multiplier: {{ document_count // insert_threads }}}}
 {% endfor %}
 

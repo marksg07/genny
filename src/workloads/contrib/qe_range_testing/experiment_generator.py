@@ -4,12 +4,14 @@ env = Environment(
     loader=PackageLoader("qe_range_testing"),
     autoescape=select_autoescape()
 )
+
 insert_threads = 8
 query_threads = 1
 document_count = 100000
 query_count = 10000
 assert document_count % insert_threads == 0
 assert query_count % query_threads == 0
+
 
 def generate_queries(n, ub):
     queries = []
@@ -162,21 +164,23 @@ def generate_all_workloads_for_experiment2(is_local):
     # encrypted tests
     for sparsity in [1, 2, 3, 4]: # 4
         for contention in [0, 4, 8]: # 12
-            with open(f'workloads/{wldir}/experiment2_sp{sparsity}_cf{contention}.yml', 'w') as f:
-                f.write(main_template.render(encrypt=True,
-                                contention_factor=contention, sparsity=sparsity, 
-                                document_count=document_count, query_count=query_count, 
-                                insert_threads=insert_threads,
-                                use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path, 
-                                tenthoufile=basedir+tenthoufile, onesfile=basedir+onesfile,
-                                experiments=experiments))
-    with open(f'workloads/{wldir}/experiment2_unencrypted.yml', 'w') as f:
-        f.write(main_template.render(encrypt=False,
-                        document_count=document_count, query_count=query_count, 
-                        insert_threads=insert_threads,
-                        use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path, 
-                        tenthoufile=basedir+tenthoufile, onesfile=basedir+onesfile,
-                        experiments=experiments))
+            for ex in experiments:
+                with open(f'workloads/{wldir}/experiment2_encrypted_{ex.field_name}_sp{sparsity}_cf{contention}_sel{ex.selectivity}_{ex.query_type}.yml', 'w') as f:
+                    f.write(main_template.render(encrypt=True,
+                                    contention_factor=contention, sparsity=sparsity, 
+                                    document_count=document_count, query_count=query_count, 
+                                    insert_threads=insert_threads,
+                                    use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path, 
+                                    tenthoufile=basedir+tenthoufile, onesfile=basedir+onesfile,
+                                    experiments=[ex], fields=[ex.field_name]))
+    for ex in experiments:
+        with open(f'workloads/{wldir}/experiment2_unencrypted_{ex.field_name}_sel{ex.selectivity}_{ex.query_type}.yml', 'w') as f:
+            f.write(main_template.render(encrypt=False,
+                            document_count=document_count, query_count=query_count, 
+                            insert_threads=insert_threads,
+                            use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path, 
+                            tenthoufile=basedir+tenthoufile, onesfile=basedir+onesfile,
+                            experiments=[ex], fields=[ex.field_name]))
             
 # generate_all_queries_for_experiment1()
 # generate_all_workloads_for_experiment1(is_local=False)
