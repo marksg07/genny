@@ -1,5 +1,6 @@
 from random import randint
 from jinja2 import Environment, PackageLoader, select_autoescape
+import itertools
 env = Environment(
     loader=PackageLoader("qe_range_testing"),
     autoescape=select_autoescape()
@@ -139,13 +140,39 @@ exp2fields = [
 ]
 
 class Experiment2Experiment:
-    def __init__(self, field_name, field_type, spacing, query_type, selectivity, basedir):
+    def __init__(self, is_encrypted, field_name, field_type, spacing, query_type, selectivity, basedir, contention=None, sparsity=None):
         self.field_name = field_name
         self.field_type = field_type
         self.query_type = query_type
         self.selectivity = selectivity
+        self.is_encrypted = is_encrypted
+        if is_encrypted:
+            assert sparsity is not None
+            assert contention is not None
+        self.sparsity = sparsity
+        self.contention = contention
         self.min_file = basedir + experiment2_query_file('min', query_type, selectivity, spacing)
         self.max_file = basedir + experiment2_query_file('max', query_type, selectivity, spacing)
+
+    def get_full_name(self):
+        if self.is_encrypted:
+            return f'experiment2_encrypted_{self.field_name}_sp{self.sparsity}_cf{self.contention}_sel{self.selectivity}_{self.query_type}'
+        else:
+            return f'experiment2_unencrypted_{self.field_name}_sel{self.selectivity}_{self.query_type}'
+        
+    def get_query_metric_name(self):
+        return f'range_query_{self.field_name}_{self.query_type}_sel{self.selectivity}'
+
+def experiment2_experiments(basedir):
+    encryption_options = list(itertools.product([True], [1, 2, 3, 4], [0, 4, 8]))
+    encryption_options += [(False, None, None)]
+    return [Experiment2Experiment(is_encrypted, name, type, spacing, qtype, sel, basedir, contention, sparsity)
+                    for name, type, spacing in exp2fields 
+                    for qtype in ['fixed', 'rand'] 
+                    for sel in [5, 100, 1000, 10000]
+                    for is_encrypted, sparsity, contention in encryption_options
+                    ]
+
 
 def generate_all_workloads_for_experiment2(is_local):
     print(f'Generating experiment 2 workloads, is_local={is_local}')
@@ -159,29 +186,27 @@ def generate_all_workloads_for_experiment2(is_local):
         crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
     wldir = 'local' if is_local else 'evergreen'
     main_template = env.get_template("experiment-2.yml.j2")
-    experiments = [Experiment2Experiment(name, type, spacing, qtype, sel, basedir)
-                    for name, type, spacing in exp2fields for qtype in ['fixed', 'rand'] for sel in [5, 100, 1000, 10000]]
+    experiments = experiment2_experiments(basedir)
     # encrypted tests
-    for sparsity in [1, 2, 3, 4]: # 4
-        for contention in [0, 4, 8]: # 12
-            for ex in experiments:
-                with open(f'workloads/{wldir}/experiment2_encrypted_{ex.field_name}_sp{sparsity}_cf{contention}_sel{ex.selectivity}_{ex.query_type}.yml', 'w') as f:
-                    f.write(main_template.render(encrypt=True,
-                                    contention_factor=contention, sparsity=sparsity, 
-                                    document_count=document_count, query_count=query_count, 
-                                    insert_threads=insert_threads,
-                                    use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path, 
-                                    tenthoufile=basedir+tenthoufile, onesfile=basedir+onesfile,
-                                    experiments=[ex], fields=[ex.field_name]))
+    print("N experiments", len(experiments))
     for ex in experiments:
-        with open(f'workloads/{wldir}/experiment2_unencrypted_{ex.field_name}_sel{ex.selectivity}_{ex.query_type}.yml', 'w') as f:
-            f.write(main_template.render(encrypt=False,
+        with open(f'workloads/{wldir}/{ex.get_full_name()}.yml', 'w') as f:
+            f.write(main_template.render(encrypt=ex.is_encrypted,
+                            contention_factor=ex.contention, sparsity=ex.sparsity, 
                             document_count=document_count, query_count=query_count, 
                             insert_threads=insert_threads,
                             use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path, 
                             tenthoufile=basedir+tenthoufile, onesfile=basedir+onesfile,
                             experiments=[ex], fields=[ex.field_name]))
             
+def generate_config_file_for_experiment2():
+    template = env.get_template("experiment-2-perfconfig.yml.j2")
+    experiments = experiment2_experiments('')
+    with open('generated/experiment_2_perfconfig.yml', 'w') as f:
+        f.write(template.render(experiments=[ex.get_full_name() for ex in experiments],
+                                query_metric_names={ex.get_query_metric_name() for ex in experiments}))
+
+
 # generate_all_queries_for_experiment1()
 # generate_all_workloads_for_experiment1(is_local=False)
 # generate_all_workloads_for_experiment1(is_local=True)
@@ -191,5 +216,6 @@ def generate_all_workloads_for_experiment2(is_local):
 
 #generate_numbers_file()
 #generate_all_queries_for_experiment2()
-generate_all_workloads_for_experiment2(is_local=True)
-generate_all_workloads_for_experiment2(is_local=False)
+# generate_all_workloads_for_experiment2(is_local=True)
+# generate_all_workloads_for_experiment2(is_local=False)
+generate_config_file_for_experiment2()

@@ -21,12 +21,12 @@ Encryption:
     Collection: *test_coll
     EncryptionType: queryable
     {% set field_defs = {
-      "f_sint32_1": 'f_sint32_1: { type: "int", queries: [{queryType: "rangePreview", min: -2147483648, max: 2147483647, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }',
-      "f_sint32_2": 'f_sint32_2: { type: "int", queries: [{queryType: "rangePreview", min: 1, max: 100000, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }',
-      "f_bin64_1": 'f_bin64_1: { type: "double", queries: [{queryType: "rangePreview", contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }',
-      "f_bin64_2": 'f_bin64_2: { type: "double", queries: [{queryType: "rangePreview", min: -100, max: 100, precision: 4, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }',
-      "f_dec128_1": 'f_dec128_1: { type: "decimal", queries: [{queryType: "rangePreview", contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }',
-      "f_dec128_2": 'f_dec128_2: { type: "decimal", queries: [{queryType: "rangePreview", min: -50000000, max: 50000000, precision: 4, contention: {{ contention_factor }}, sparsity: {{ sparsity }}}] }',
+      "f_sint32_1": 'f_sint32_1: { type: "int", queries: [{queryType: "rangePreview", min: -2147483648, max: 2147483647, contention: %d, sparsity: %d}] }' % (contention_factor, sparsity),
+      "f_sint32_2": 'f_sint32_2: { type: "int", queries: [{queryType: "rangePreview", min: 1, max: 100000, contention: %d, sparsity: %d}] }' % (contention_factor, sparsity),
+      "f_bin64_1": 'f_bin64_1: { type: "double", queries: [{queryType: "rangePreview", contention: %d, sparsity: %d}] }' % (contention_factor, sparsity),
+      "f_bin64_2": 'f_bin64_2: { type: "double", queries: [{queryType: "rangePreview", min: -100, max: 100, precision: 4, contention: %d, sparsity: %d}] }' % (contention_factor, sparsity),
+      "f_dec128_1": 'f_dec128_1: { type: "decimal", queries: [{queryType: "rangePreview", contention: %d, sparsity: %d}] }' % (contention_factor, sparsity),
+      "f_dec128_2": 'f_dec128_2: { type: "decimal", queries: [{queryType: "rangePreview", min: -50000000, max: 50000000, precision: 4, contention: %d, sparsity: %d}] }' % (contention_factor, sparsity),
     } %}
     QueryableEncryptedFields:
 {% for field in fields %}
