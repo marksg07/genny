@@ -1,4 +1,5 @@
 from random import randint
+import random
 from jinja2 import Environment, PackageLoader, select_autoescape
 import itertools
 env = Environment(
@@ -43,12 +44,18 @@ def generate_all_queries_for_experiment1():
         minf, maxf = query_minmax_file_names(upper_bound)
         export_queries(queries, minf, maxf)
 
+eps = 7./3 - 4./3 - 1
 def generate_exp2_queries(n, lb, ub, sel, mult):
     queries = []
     for _ in range(n):
-        mn = randint(lb, ub + 1 - sel)
-        mx = mn + sel - 1
-        queries.append((mn * mult, mx * mult))
+        if mult is not None:
+            mn = randint(lb, ub + 1 - sel)
+            mx = mn + sel - 1
+            queries.append((mn * mult, mx * mult))
+        else:
+            mn = random.uniform(lb, ub - sel)
+            mx = mn + sel
+            queries.append((mn, mx))
     return queries
 
 def experiment2_query_file(minmax, qtype, sel, spacing):
@@ -58,12 +65,14 @@ def generate_all_queries_for_experiment2():
     print('Generating exp 2 queries')
     for (qtype, qnum) in [('fixed', 1), ('rand', query_count)]:
         for sel in [5, 100, 1000, 10000]:
-            for (spacing, multiplier) in [('ones', 1), ('tenthousandths', 0.0001)]:
+            for (spacing, multiplier, prec) in [('ones', 1, 0), ('tenthousandths', 0.0001, 4), ('uniform', None, None)]:
                 queries = generate_exp2_queries(qnum, 1, 100000, sel, multiplier)
+                if prec is not None:
+                    queries = [(round(query[0], prec), round(query[1], prec)) for query in queries]
                 with open(experiment2_query_file('min', qtype, sel, spacing), 'w') as f:
-                    f.writelines('\n'.join([str(round(query[0], 4)) for query in queries]))
+                    f.writelines('\n'.join([str(query[0]) for query in queries]))
                 with open(experiment2_query_file('max', qtype, sel, spacing), 'w') as f:
-                    f.writelines('\n'.join([str(round(query[1], 4)) for query in queries]))
+                    f.writelines('\n'.join([str(query[1]) for query in queries]))
 
 def generate_all_workloads_for_experiment1(is_local):
     if is_local: 
@@ -131,28 +140,30 @@ def generate_numbers_file():
     #for i in range(0.0001, 10.000001, 0.0001):
 
 exp2fields = [
-    ('f_sint32_1', 'Int32', 'ones'),
-    ('f_sint32_2', 'Int32', 'ones'),
-    ('f_bin64_1', 'Double', 'ones'),
-    ('f_bin64_2', 'Double', 'tenthousandths'),
-    ('f_dec128_1', 'Decimal', 'ones'),
-    ('f_dec128_2', 'Decimal', 'tenthousandths'),
+    ('f_sint32_1', 'Int32', 'ones', 'ones'),
+    ('f_sint32_2', 'Int32', 'ones', 'ones'),
+    ('f_bin64_1', 'Double', 'ones', 'uniform'),
+    ('f_bin64_2', 'Double', 'tenthousandths', 'tenthousandths'),
+    ('f_dec128_1', 'Decimal', 'ones', 'uniform'),
+    ('f_dec128_2', 'Decimal', 'tenthousandths', 'tenthousandths'),
 ]
 
 class Experiment2Experiment:
-    def __init__(self, is_encrypted, field_name, field_type, spacing, query_type, selectivity, basedir, contention=None, sparsity=None):
+    def __init__(self, is_encrypted, field_name, field_type, spacing, query_type, selectivity, query_spacing, basedir, contention=None, sparsity=None):
         self.field_name = field_name
         self.field_type = field_type
         self.query_type = query_type
         self.selectivity = selectivity
+        self.spacing = spacing
+        self.query_spacing = query_spacing
         self.is_encrypted = is_encrypted
         if is_encrypted:
             assert sparsity is not None
             assert contention is not None
         self.sparsity = sparsity
         self.contention = contention
-        self.min_file = basedir + experiment2_query_file('min', query_type, selectivity, spacing)
-        self.max_file = basedir + experiment2_query_file('max', query_type, selectivity, spacing)
+        self.min_file = basedir + experiment2_query_file('min', query_type, selectivity, query_spacing)
+        self.max_file = basedir + experiment2_query_file('max', query_type, selectivity, query_spacing)
 
     def get_full_name(self):
         if self.is_encrypted:
@@ -166,8 +177,8 @@ class Experiment2Experiment:
 def experiment2_experiments(basedir):
     encryption_options = list(itertools.product([True], [1, 2, 3, 4], [0, 4, 8]))
     encryption_options += [(False, None, None)]
-    return [Experiment2Experiment(is_encrypted, name, type, spacing, qtype, sel, basedir, contention, sparsity)
-                    for name, type, spacing in exp2fields 
+    return [Experiment2Experiment(is_encrypted, name, type, spacing, qtype, sel, query_spacing, basedir, contention, sparsity)
+                    for name, type, spacing, query_spacing in exp2fields 
                     for qtype in ['fixed', 'rand'] 
                     for sel in [5, 100, 1000, 10000]
                     for is_encrypted, sparsity, contention in encryption_options
@@ -214,8 +225,8 @@ def generate_config_file_for_experiment2():
 # generate_all_workloads_for_experiment0(is_local=False)
 # generate_all_workloads_for_experiment0(is_local=True)
 
-#generate_numbers_file()
-#generate_all_queries_for_experiment2()
-# generate_all_workloads_for_experiment2(is_local=True)
-# generate_all_workloads_for_experiment2(is_local=False)
-generate_config_file_for_experiment2()
+generate_numbers_file()
+generate_all_queries_for_experiment2()
+generate_all_workloads_for_experiment2(is_local=True)
+generate_all_workloads_for_experiment2(is_local=False)
+# generate_config_file_for_experiment2()
