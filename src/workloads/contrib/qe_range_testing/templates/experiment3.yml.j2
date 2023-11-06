@@ -8,6 +8,7 @@ GlobalDefaults:
   Collection: &test_coll testcoll
   ClientName: &test_pool TestPool
   Nop: &nop {Nop: true}
+  InsertPhase: &insertPhase {{ 0 if encrypt else 1 }}
 
 {% if encrypt %}
 Encryption:
@@ -36,6 +37,22 @@ Clients:
 {% endif %}
 
 Actors:
+{% if not encrypt %}
+  - Name: CreateSecondaryIndex
+    Type: RunCommand
+    Threads: 1
+    Phases:
+    - Repeat: 1
+      Database: *test_db
+      Operations:
+      - OperationName: RunCommand
+        OperationCommand:
+          createIndexes: *test_coll
+          indexes:
+          - key: {field1: 1}
+            name: field1index
+    - *nop
+{% endif %}
 {% if alldiff %}
 {% include 'experiment3-inserts-alldiff.yml.j2' %}
 {% else %}
@@ -46,8 +63,8 @@ Actors:
     Type: LoggingActor
     Threads: 1
     Phases:
-      - Phase: 0
-        LogEvery: 5 minutes
+      - *nop
+      - LogEvery: 5 minutes
         Blocking: None
 
 AutoRun:

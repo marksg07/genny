@@ -4,6 +4,7 @@
     Database: *test_db
     ClientName: *test_pool
     Phases:
+    - *nop
     - Repeat: {{ document_count // insert_threads }}
       Collection: *test_coll
       MetricsName: "load"
