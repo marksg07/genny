@@ -8,7 +8,7 @@ GlobalDefaults:
   Collection: &test_coll ContiguousValuesFreqOne
   ClientName: &test_pool TestPool
   Nop: &nop {Nop: true}
-  LastPhase: &last_phase {{ experiments|length }}
+  LastPhase: &last_phase {{ experiments|length + 1 }}
 
 {% if encrypt %}
 Encryption:
@@ -46,6 +46,28 @@ Clients:
 {% endif %}
 
 Actors:
+{% if not encrypt %}
+  - Name: CreateSecondaryIndex
+    Type: RunCommand
+    Threads: 1
+    Phases:
+      OnlyActiveInPhases:
+        Active: [0]
+        NopInPhasesUpTo: *last_phase
+        PhaseConfig:
+          Repeat: 1
+          Database: *test_db
+          Operations:
+          - OperationName: RunCommand
+            OperationCommand:
+              createIndexes: *test_coll
+              indexes:
+              {% for field in fields %}
+              - key: { {{ field }}: 1}
+                name: {{ field }}_index
+              {% endfor %}
+{% endif %}
+
 {% for t in range(insert_threads) %}
   - Name: InsertActor_Thread{{ t }}
     Type: CrudActor
@@ -54,7 +76,7 @@ Actors:
     ClientName: *test_pool
     Phases:
       OnlyActiveInPhases:
-        Active: [0]
+        Active: [1]
         NopInPhasesUpTo: *last_phase
         PhaseConfig:
           Repeat: {{ document_count // insert_threads }}
@@ -86,6 +108,7 @@ Actors:
     ClientName: *test_pool
     Phases:
     - *nop
+    - *nop
 {% for experiment in experiments %}
     - Repeat: {{ query_count }}
       Collection: *test_coll
@@ -95,8 +118,15 @@ Actors:
         OperationMetricsName: range_query_{{experiment.field_name}}_{{experiment.query_type}}_sel{{experiment.selectivity}}
         OperationCommand:
           Filter: { {{experiment.field_name}}: {
+{% if experiment.use_in_query %}
+              $in: {^Array: {
+                distinct: true,
+                number: {{ experiment.selectivity }},
+                of: {^ConvertTo{{experiment.field_type}}: {from: {^ChooseFromDataset:{"path": "{{ experiment.gen_file }}", "sequential": false}}}}}}
+{% else %}
               $gte: {^ConvertTo{{experiment.field_type}}: {from: {^ChooseFromDataset:{"path": "{{ experiment.min_file }}", "sequential": true}}}},
               $lte: {^ConvertTo{{experiment.field_type}}: {from: {^ChooseFromDataset:{"path": "{{ experiment.max_file }}", "sequential": true}}}}
+{% endif %}
             }
           }
 {% endfor %}
@@ -105,7 +135,8 @@ Actors:
     Type: LoggingActor
     Threads: 1
     Phases:
-      - Phase: 0..{{ experiments|length }}
+      - *nop
+      - Phase: 1..{{ experiments|length + 1 }}
         LogEvery: 5 minutes
         Blocking: None
 
