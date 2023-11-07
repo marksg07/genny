@@ -5,7 +5,9 @@ patches:
     - "qe_range_testing_workloads_evergreen_{{ exp_name }}"{% endfor %}
 genny_metrics:
   tests:
-  - "PreDefinedRangeQueryActor.load.inserts"
+  - "InsertActor.load.inserts"
+  {% for i in range(thread_count) %}- "InsertActor_Thread{{ i }}.load.inserts"
+  {% endfor %}
   metrics:
   - "OperationsTotal"
   - "DocumentsTotal"
@@ -18,7 +20,7 @@ genny_metrics:
   - "OperationThroughput"
   - "DocumentThroughput"
   - "SizeThroughput"
-- "LatencyMin"
+  - "LatencyMin"
   - "LatencyMax"
   - "Latency50thPercentile"
   - "Latency80thPercentile"

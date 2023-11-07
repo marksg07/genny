@@ -249,16 +249,21 @@ def generate_all_workloads_for_experiment3(is_local):
     wldir = 'local' if is_local else 'evergreen'
     template = env.get_template("experiment3.yml.j2")
     for alldiff in [False, True]:
-        for upper_bound in [2**17-1, 2**26-1, 2**31-1]:
-            for sparsity in [1, 2, 3, 4]:
-                for contention in [0, 4, 8]: 
+        for sparsity in [1, 2, 3, 4]:
+            for contention in [0, 4, 8]: 
+                for upper_bound in [2**17-1, 2**26-1, 2**31-1]:
                     with open(f'workloads/{wldir}/experiment_i1_encrypted_{"diff" if alldiff else "same"}_c{contention}_s{sparsity}_ub{upper_bound}.yml', 'w+') as f:
-                        f.write(template.render(encrypt=True,
+                        f.write(template.render(encrypt=True, equality=False,
                                                 upper_bound=upper_bound, contention=contention, sparsity=sparsity,
                                                 document_count=document_count, insert_threads=insert_threads,
                                                 alldiff=alldiff, data_path=basedir+INSERT_FILE,
                                                 use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
-                        
+                with open(f'workloads/{wldir}/experiment_i1_encrypted_{"diff" if alldiff else "same"}_equality_c{contention}_s{sparsity}.yml', 'w+') as f:
+                        f.write(template.render(encrypt=True, equality=True,
+                                                upper_bound=0, contention=contention, sparsity=sparsity,
+                                                document_count=document_count, insert_threads=insert_threads,
+                                                alldiff=alldiff, data_path=basedir+INSERT_FILE,
+                                                use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
         with open(f'workloads/{wldir}/experiment_i1_unencrypted_{"diff" if alldiff else "same"}.yml', 'w+') as f:
             f.write(template.render(encrypt=False,
                                     document_count=document_count, insert_threads=insert_threads,
@@ -275,7 +280,7 @@ def generate_config_file_for_experiment3():
                     experiments.append(f'experiment_i1_encrypted_{"diff" if alldiff else "same"}_c{contention}_s{sparsity}_ub{upper_bound}')
         experiments.append(f'experiment_i1_unencrypted_{"diff" if alldiff else "same"}')
     with open('generated/experiment_3_perfconfig.yml', 'w') as f:
-        f.write(template.render(experiments=experiments))
+        f.write(template.render(experiments=experiments, thread_count=insert_threads))
 # generate_inserts()
 
 
@@ -287,11 +292,11 @@ def generate_config_file_for_experiment3():
 # generate_all_workloads_for_experiment0(is_local=True)
 
 #generate_numbers_file()
-generate_all_queries_for_experiment2()
-generate_all_workloads_for_experiment2(is_local=True)
-generate_all_workloads_for_experiment2(is_local=False)
+# generate_all_queries_for_experiment2()
+# generate_all_workloads_for_experiment2(is_local=True)
+# generate_all_workloads_for_experiment2(is_local=False)
 # generate_config_file_for_experiment2()
 
-# generate_all_workloads_for_experiment3(is_local=True)
-# generate_all_workloads_for_experiment3(is_local=False)
+generate_all_workloads_for_experiment3(is_local=True)
+generate_all_workloads_for_experiment3(is_local=False)
 # generate_config_file_for_experiment3()
