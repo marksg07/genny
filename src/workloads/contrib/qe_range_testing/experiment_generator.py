@@ -274,11 +274,13 @@ def generate_config_file_for_experiment3():
     template = env.get_template("experiment-3-perfconfig.yml.j2")
     experiments = []
     for alldiff in [False, True]:
-        for upper_bound in [2**17-1, 2**26-1, 2**31-1]:
-            for sparsity in [1, 2, 3, 4]:
-                for contention in [0, 4, 8]: 
+        for sparsity in [1, 2, 3, 4]:
+            for contention in [0, 4, 8]: 
+                for upper_bound in [2**17-1, 2**26-1, 2**31-1]:
                     experiments.append(f'experiment_i1_encrypted_{"diff" if alldiff else "same"}_c{contention}_s{sparsity}_ub{upper_bound}')
+                experiments.append(f'experiment_i1_encrypted_{"diff" if alldiff else "same"}_equality_c{contention}_s{sparsity}')
         experiments.append(f'experiment_i1_unencrypted_{"diff" if alldiff else "same"}')
+    experiments = sorted(experiments)
     with open('generated/experiment_3_perfconfig.yml', 'w') as f:
         f.write(template.render(experiments=experiments, thread_count=insert_threads))
 # generate_inserts()
@@ -297,6 +299,6 @@ def generate_config_file_for_experiment3():
 # generate_all_workloads_for_experiment2(is_local=False)
 # generate_config_file_for_experiment2()
 
-generate_all_workloads_for_experiment3(is_local=True)
-generate_all_workloads_for_experiment3(is_local=False)
-# generate_config_file_for_experiment3()
+# generate_all_workloads_for_experiment3(is_local=True)
+# generate_all_workloads_for_experiment3(is_local=False)
+generate_config_file_for_experiment3()
