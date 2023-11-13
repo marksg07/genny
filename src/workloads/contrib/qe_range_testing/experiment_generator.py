@@ -283,6 +283,43 @@ def generate_config_file_for_experiment3():
     experiments = sorted(experiments)
     with open('generated/experiment_3_perfconfig.yml', 'w') as f:
         f.write(template.render(experiments=experiments, thread_count=insert_threads))
+
+def generate_all_workloads_for_experiment_iht(is_local):
+    if is_local: 
+        basedir = './src/workloads/contrib/qe_range_testing/'
+    else: 
+        basedir = './src/genny/src/workloads/contrib/qe_range_testing/'
+    if is_local:
+        crypt_path = '/home/ubuntu/mongo_crypt/lib/mongo_crypt_v1.so'
+    else:
+        crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
+    wldir = 'local' if is_local else 'evergreen'
+    template = env.get_template("experiment3.yml.j2")
+    for alldiff in [False, True]:
+        for sparsity in [1, 2, 3, 4]:
+            for contention in [0, 4, 8]: 
+                for upper_bound in [2**10-1, 2**15-1, 2**31-1]:
+                    for trim_factor in [0, 2, 4, 6, 8]:
+                        with open(f'workloads/{wldir}/experiment_iht_{"diff" if alldiff else "same"}_c{contention}_s{sparsity}_ub{upper_bound}_tf{trim_factor}.yml', 'w+') as f:
+                            f.write(template.render(encrypt=True, equality=False, trim_factor=trim_factor,
+                                                    upper_bound=upper_bound, contention=contention, sparsity=sparsity,
+                                                    document_count=document_count, insert_threads=insert_threads,
+                                                    alldiff=alldiff, data_path=basedir+INSERT_FILE,
+                                                    use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
+
+def generate_config_file_for_experiment_iht():
+    template = env.get_template("experiment-3-perfconfig.yml.j2")
+    experiments = []
+    for alldiff in [False, True]:
+        for sparsity in [1, 2, 3, 4]:
+            for contention in [0, 4, 8]: 
+                for upper_bound in [2**10-1, 2**15-1, 2**31-1]:
+                    for trim_factor in [0, 2, 4, 6, 8]:
+                        experiments.append(f'experiment_iht_{"diff" if alldiff else "same"}_c{contention}_s{sparsity}_ub{upper_bound}_tf{trim_factor}')
+    experiments = sorted(experiments)
+    with open('generated/experiment_iht_perfconfig.yml', 'w') as f:
+        f.write(template.render(experiments=experiments, thread_count=insert_threads))
+
 # generate_inserts()
 
 
@@ -301,4 +338,8 @@ def generate_config_file_for_experiment3():
 
 # generate_all_workloads_for_experiment3(is_local=True)
 # generate_all_workloads_for_experiment3(is_local=False)
-generate_config_file_for_experiment3()
+# generate_config_file_for_experiment3()
+
+generate_all_workloads_for_experiment_iht(is_local=True)
+generate_all_workloads_for_experiment_iht(is_local=False)
+generate_config_file_for_experiment_iht()

@@ -21,7 +21,7 @@ Encryption:
     Collection: *test_coll
     EncryptionType: queryable
     QueryableEncryptedFields:
-        field1: { type: "int", queries: [{queryType: {{ "equality" if equality else "rangePreview" }}, min: 0, max: {{ upper_bound }}, contention: {{ contention }}, sparsity: {{ sparsity }}}] }
+        field1: { type: "int", queries: [{queryType: {{ "equality" if equality else "rangePreview" }}, min: 0, max: {{ upper_bound }}, contention: {{ contention }}, sparsity: {{ sparsity }}, trimFactor: {{ trim_factor|default(0) }}}] }
 {% endif %}
 
 Clients:
