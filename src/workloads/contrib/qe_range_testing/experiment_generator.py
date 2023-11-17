@@ -1,5 +1,6 @@
 from random import randint
 import random
+import math
 from jinja2 import Environment, PackageLoader, select_autoescape
 import itertools
 env = Environment(
@@ -296,29 +297,214 @@ def generate_all_workloads_for_experiment_iht(is_local):
     wldir = 'local' if is_local else 'evergreen'
     template = env.get_template("experiment3.yml.j2")
     for alldiff in [False, True]:
-        for sparsity in [1, 2, 3, 4]:
+        for upper_bound in [2**10-1, 2**15-1, 2**31-1]:
             for contention in [0, 4, 8]: 
-                for upper_bound in [2**10-1, 2**15-1, 2**31-1]:
+                for sparsity in [1, 2, 3, 4]:
                     for trim_factor in [0, 2, 4, 6, 8]:
                         with open(f'workloads/{wldir}/experiment_iht_{"diff" if alldiff else "same"}_c{contention}_s{sparsity}_ub{upper_bound}_tf{trim_factor}.yml', 'w+') as f:
                             f.write(template.render(encrypt=True, equality=False, trim_factor=trim_factor,
                                                     upper_bound=upper_bound, contention=contention, sparsity=sparsity,
                                                     document_count=document_count, insert_threads=insert_threads,
-                                                    alldiff=alldiff, data_path=basedir+INSERT_FILE,
+                                                    alldiff=alldiff, data_path=basedir+get_insert_file(upper_bound),
                                                     use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
+                with open(f'workloads/{wldir}/experiment_iht_{"diff" if alldiff else "same"}_equality_c{contention}_ub{upper_bound}.yml', 'w+') as f:
+                    f.write(template.render(encrypt=True, equality=True, trim_factor=trim_factor,
+                                            upper_bound=upper_bound, contention=contention, sparsity=sparsity,
+                                            document_count=document_count, insert_threads=insert_threads,
+                                            alldiff=alldiff, data_path=basedir+get_insert_file(upper_bound),
+                                            use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
+            with open(f'workloads/{wldir}/experiment_iht_{"diff" if alldiff else "same"}_unencrypted_ub{upper_bound}.yml', 'w+') as f:
+                f.write(template.render(encrypt=False, equality=False, trim_factor=trim_factor,
+                                        upper_bound=upper_bound, contention=contention, sparsity=sparsity,
+                                        document_count=document_count, insert_threads=insert_threads,
+                                        alldiff=alldiff, data_path=basedir+get_insert_file(upper_bound),
+                                        use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
+            
+
+PATCHES = {
+    'first_iht': '6552a1441e2d17820ea67670',
+    'fixed_spread_iht': '6553cc2d850e61f31d0bf529',
+    'equality_unenc_iht': '6553d6fe2a60ed842338927b',
+    'unenc_i3': '65492a8e3e8e868f07816b54',
+    'equality_i3': '654ab0cd1e2d17e7616a095b',
+}
 
 def generate_config_file_for_experiment_iht():
+    def patch_id(is_encrypted, is_equality, alldiff, upper_bound):
+        def _inner():
+            new_spread = alldiff and upper_bound != 2**31-1
+            if is_encrypted:
+                if is_equality:
+                    if new_spread: 
+                        return 'equality_unenc_iht'
+                    else:
+                        return 'equality_i3'
+                else:
+                    if new_spread:
+                        return 'fixed_spread_iht'
+                    else:
+                        return 'first_iht'
+            else:
+                if new_spread:
+                    return 'equality_unenc_iht'
+                else:
+                    return 'unenc_i3'
+        return PATCHES[_inner()]
+
     template = env.get_template("experiment-3-perfconfig.yml.j2")
-    experiments = []
-    for alldiff in [False, True]:
-        for sparsity in [1, 2, 3, 4]:
+    experiment_patches = {v: [] for v in PATCHES.values()}
+    for upper_bound in [2**10-1, 2**15-1, 2**31-1]:
+        for alldiff in [False, True]:
+            range_patchid = patch_id(True, False, alldiff, upper_bound)
             for contention in [0, 4, 8]: 
-                for upper_bound in [2**10-1, 2**15-1, 2**31-1]:
+                for sparsity in [1, 2, 3, 4]:
                     for trim_factor in [0, 2, 4, 6, 8]:
-                        experiments.append(f'experiment_iht_{"diff" if alldiff else "same"}_c{contention}_s{sparsity}_ub{upper_bound}_tf{trim_factor}')
-    experiments = sorted(experiments)
+                        experiment_patches[range_patchid].append(f'experiment_iht_{"diff" if alldiff else "same"}_c{contention}_s{sparsity}_ub{upper_bound}_tf{trim_factor}')
+                eq_patch_id = patch_id(True, True, alldiff, upper_bound)
+                if upper_bound == 2**31 - 1: 
+                    experiment_patches[eq_patch_id].append(f'experiment_i1_encrypted_{"diff" if alldiff else "same"}_equality_c{contention}_s1')
+                elif alldiff:
+                    experiment_patches[eq_patch_id].append(f'experiment_iht_{"diff" if alldiff else "same"}_equality_c{contention}_ub{upper_bound}')
+            unenc_patchid = patch_id(False, False, alldiff, upper_bound)
+            if upper_bound == 2**31 - 1:
+                experiment_patches[unenc_patchid].append(f'experiment_i1_unencrypted_{"diff" if alldiff else "same"}')
+            elif alldiff:
+                experiment_patches[unenc_patchid].append(f'experiment_iht_{"diff" if alldiff else "same"}_unencrypted_ub{upper_bound}')
+                    
     with open('generated/experiment_iht_perfconfig.yml', 'w') as f:
-        f.write(template.render(experiments=experiments, thread_count=insert_threads))
+        f.write(template.render(experiments_by_patch=experiment_patches, all_experiments = sum(experiment_patches.values(), []), thread_count=insert_threads))
+
+def get_iht_inserts(max_val):
+    domain_size = min(max_val + 1, document_count)
+    times = document_count // domain_size
+    looped_doc_count = domain_size * times
+    remainder = document_count - looped_doc_count
+    
+    l = list(itertools.islice(itertools.cycle(range(domain_size)), looped_doc_count))
+    l += list(random.sample(range(domain_size), remainder))
+    assert(len(l) == document_count)
+    print(max(l), min(l))
+    assert(max(l) == max_val or max_val > document_count)
+    assert(min(l) == 0)
+    random.shuffle(l)
+    return l
+
+def generate_iht_inserts():
+    for upper_bound in [2**10-1, 2**15-1, 2**31-1]:
+        inserts = get_iht_inserts(upper_bound)
+        with open(get_insert_file(upper_bound), 'w') as f:
+            f.write('\n'.join(str(i) for i in inserts))
+
+def get_insert_file(ub):
+    return f'data/experiment_iht_ub{ub}_data.txt'
+
+def get_i2_uniform(minsupp, maxsupp, prec, minfreq, maxfreq):
+    prec_factor = 10**prec
+    # max_picks = int(math.ceil(document_count / minfreq))
+    chosen = []
+    chosen_set = set()
+    
+    while len(chosen) < document_count:
+        next_val = random.randint(minsupp * prec_factor, maxsupp * prec_factor)
+        if next_val in chosen_set:
+            continue
+        freq = random.randint(minfreq, maxfreq)
+        freq = min(freq, document_count - len(chosen))
+        chosen += [next_val] * freq
+        chosen_set.add(next_val)
+    assert len(chosen) == document_count
+    print(f'Generated {document_count} values, {len(chosen_set)} are unique')
+    chosen = [c / (1.0*prec_factor) for c in chosen]
+    random.shuffle(chosen)
+    return chosen
+
+def calculate_harmonic_sum(n, alpha):
+    total_sum = 0.0
+    for i in range(1, n + 1):
+        total_sum = total_sum + 1 / math.pow(i, alpha)
+    return total_sum
+
+def get_i2_zipf(values):
+    num_values = len(values)
+    sum_freq = 0
+    alpha = 1.1
+    freq_list = []
+
+    H = calculate_harmonic_sum(num_values, alpha)
+
+    for i in range(num_values):
+        f_i = max(1, int(round(document_count * (math.pow(i + 1, -alpha) / H))))
+        freq_list.append(f_i)
+        sum_freq += f_i
+
+    if sum_freq != document_count:
+        print(f'Subbing {sum_freq - document_count}')
+        freq_list[0] -= sum_freq - document_count
+    print(freq_list, len(freq_list), sum(freq_list))
+
+    ret = []
+    for i in range(num_values):
+        ret += [values[i]] * freq_list[i]
+    random.shuffle(ret)
+    assert len(ret) == document_count
+    return ret
+
+def generate_i2_inserts():
+    ubig = get_i2_uniform(0, 10**10, 4, 1, 5)
+    usmall = get_i2_uniform(1699021116, 1699024716, 0, 500, 1000)
+    zbig = get_i2_zipf([i / 100. for i in range(0, 10000)])
+    zsmall = get_i2_zipf(list(range(0, 200)))
+    fname_map = {'uniform_big': (ubig, 4), 'uniform_small': (usmall, 0), 'zipf_big': (zbig, 2), 'zipf_small': (zsmall, 0)}
+    for fname, (docs, rounding) in fname_map.items():
+        with open(f'data/{fname}.txt', 'w') as f:
+            f.write('\n'.join([str(round(d, rounding)) for d in docs]))
+
+class ExpI2Field:
+    def __init__(self, datafile_name, upper_bound, precision):
+        self.name = datafile_name
+        self.ub = upper_bound
+        self.prec = precision
+
+expi2fields = [
+    ExpI2Field('uniform_big', 10**10, 4),
+    ExpI2Field('uniform_small', 10**13, 0),
+    ExpI2Field('zipf_big', 100, 2),
+    ExpI2Field('zipf_small', 199, 0)
+]
+
+def generate_i2_workloads(is_local):
+    if is_local: 
+        basedir = './src/workloads/contrib/qe_range_testing/'
+    else: 
+        basedir = './src/genny/src/workloads/contrib/qe_range_testing/'
+    if is_local:
+        crypt_path = '/home/ubuntu/mongo_crypt/lib/mongo_crypt_v1.so'
+    else:
+        crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
+    wldir = 'local' if is_local else 'evergreen'
+    template = env.get_template("experiment-i2.yml.j2")
+    for field in expi2fields:
+        for contention in [0, 4, 8]: 
+            for sparsity in [1, 2, 3, 4]:
+                for trim_factor in [0, 2, 4, 6, 8]:
+                    with open(f'workloads/{wldir}/experiment_i2_ran_{field.name}_c{contention}_s{sparsity}_tf{trim_factor}.yml', 'w+') as f:
+                        f.write(template.render(encrypt=True, equality=False, trim_factor=trim_factor,
+                                                upper_bound=field.ub, contention=contention, sparsity=sparsity,
+                                                document_count=document_count, insert_threads=insert_threads,
+                                                precision=field.prec, data_path=basedir+f'data/{field.name}.txt',
+                                                use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
+            with open(f'workloads/{wldir}/experiment_i2_eq_{field.name}_c{contention}.yml', 'w+') as f:
+                f.write(template.render(encrypt=True, equality=True,
+                                        contention=contention,
+                                        document_count=document_count, insert_threads=insert_threads,
+                                        data_path=basedir+f'data/{field.name}.txt',
+                                        use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
+        with open(f'workloads/{wldir}/experiment_i2_eq_{field.name}_c{contention}.yml', 'w+') as f:
+            f.write(template.render(encrypt=False,
+                                    document_count=document_count, insert_threads=insert_threads,
+                                    data_path=basedir+f'data/{field.name}.txt',
+                                    use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
+
 
 # generate_inserts()
 
@@ -340,6 +526,11 @@ def generate_config_file_for_experiment_iht():
 # generate_all_workloads_for_experiment3(is_local=False)
 # generate_config_file_for_experiment3()
 
-generate_all_workloads_for_experiment_iht(is_local=True)
-generate_all_workloads_for_experiment_iht(is_local=False)
-generate_config_file_for_experiment_iht()
+# generate_iht_inserts()
+# generate_all_workloads_for_experiment_iht(is_local=True)
+# generate_all_workloads_for_experiment_iht(is_local=False)
+# generate_config_file_for_experiment_iht()
+
+# generate_i2_inserts()
+generate_i2_workloads(True)
+generate_i2_workloads(False)
