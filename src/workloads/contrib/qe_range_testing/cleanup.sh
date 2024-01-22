@@ -1,3 +1,3 @@
-rm queries/* 
-rm workloads/evergreen/*
-rm workloads/local/*
+rm queries/*.txt
+rm workloads/evergreen/*.yml
+rm workloads/local/*.yml

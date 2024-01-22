@@ -1,0 +1,235 @@
+SchemaVersion: 2018-07-01
+Owner: "@10gen/server-security"
+Description: |
+  QE Range Release Criteria Experiment
+Database: &encrypted_db genny_release_criteria
+Collection: &encrypted_coll coll
+
+
+Encryption:
+  
+  UseCryptSharedLib: true
+  CryptSharedLibPath: /data/workdir/mongocrypt/lib/mongo_crypt_v1.so
+  
+  EncryptedCollections:
+  - Database: *encrypted_db
+    Collection: *encrypted_coll
+    EncryptionType: queryable
+
+    QueryableEncryptedFields:
+      tm_retail_tx: { type: "long", queries: [{queryType: "rangePreview", min: 0, max: 1000000000000, contention: 4, sparsity: 2, trimFactor: 8}] }
+      age_hospitals: { type: "int",  queries: [{queryType: "rangePreview", min: 0, max: 55000, contention: 8, sparsity: 2, trimFactor: 6}] }
+      bnk_bal: { type: "decimal", queries: [{queryType: "rangePreview", min: 0, max: 1000000, precision: 2, contention: 8, sparsity: 2, trimFactor: 6}] }
+
+
+Clients:
+  EncryptedPool:
+    QueryOptions:
+      maxPoolSize: 400
+  
+    EncryptionOptions:
+      KeyVaultDatabase: "keyvault"
+      KeyVaultCollection: "datakeys"
+      EncryptedCollections:
+      - genny_release_criteria.coll
+  
+
+Actors:
+  - Name: DataGenerator
+    Type: Python
+    Threads: 1
+    Phases:
+    - Repeat: 1
+      Module: qe_range_data_generation
+      Endpoint: generate_all_data
+    - &nop {Nop: true}
+    - *nop
+  
+  - Name: InsertActor_Thread0
+    Type: CrudActor
+    Threads: 1
+    Database: *encrypted_db
+    ClientName: EncryptedPool
+    Phases:
+    - *nop
+    - Repeat: 125000
+      Collection: *encrypted_coll
+      MetricsName: "load"
+      Operations:
+      - OperationName: insertOne
+        OperationMetricsName: inserts
+        OperationCommand:
+          Document:
+            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_timestamps.txt", "sequential": true, "startFromLine": 0}}}}
+            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_ages.txt", "sequential": true, "startFromLine": 0}}}}
+            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_balances.txt", "sequential": true, "startFromLine": 0}}}}
+            _id: {^Inc: {start: 0, multiplier: 500000}}
+    - *nop
+    
+  - Name: InsertActor_Thread1
+    Type: CrudActor
+    Threads: 1
+    Database: *encrypted_db
+    ClientName: EncryptedPool
+    Phases:
+    - *nop
+    - Repeat: 125000
+      Collection: *encrypted_coll
+      MetricsName: "load"
+      Operations:
+      - OperationName: insertOne
+        OperationMetricsName: inserts
+        OperationCommand:
+          Document:
+            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_timestamps.txt", "sequential": true, "startFromLine": 125000}}}}
+            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_ages.txt", "sequential": true, "startFromLine": 125000}}}}
+            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_balances.txt", "sequential": true, "startFromLine": 125000}}}}
+            _id: {^Inc: {start: 0, multiplier: 500000}}
+    - *nop
+    
+  - Name: InsertActor_Thread2
+    Type: CrudActor
+    Threads: 1
+    Database: *encrypted_db
+    ClientName: EncryptedPool
+    Phases:
+    - *nop
+    - Repeat: 125000
+      Collection: *encrypted_coll
+      MetricsName: "load"
+      Operations:
+      - OperationName: insertOne
+        OperationMetricsName: inserts
+        OperationCommand:
+          Document:
+            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_timestamps.txt", "sequential": true, "startFromLine": 250000}}}}
+            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_ages.txt", "sequential": true, "startFromLine": 250000}}}}
+            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_balances.txt", "sequential": true, "startFromLine": 250000}}}}
+            _id: {^Inc: {start: 0, multiplier: 500000}}
+    - *nop
+    
+  - Name: InsertActor_Thread3
+    Type: CrudActor
+    Threads: 1
+    Database: *encrypted_db
+    ClientName: EncryptedPool
+    Phases:
+    - *nop
+    - Repeat: 125000
+      Collection: *encrypted_coll
+      MetricsName: "load"
+      Operations:
+      - OperationName: insertOne
+        OperationMetricsName: inserts
+        OperationCommand:
+          Document:
+            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_timestamps.txt", "sequential": true, "startFromLine": 375000}}}}
+            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_ages.txt", "sequential": true, "startFromLine": 375000}}}}
+            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_balances.txt", "sequential": true, "startFromLine": 375000}}}}
+            _id: {^Inc: {start: 0, multiplier: 500000}}
+    - *nop
+    
+  - Name: InsertActor_Thread4
+    Type: CrudActor
+    Threads: 1
+    Database: *encrypted_db
+    ClientName: EncryptedPool
+    Phases:
+    - *nop
+    - Repeat: 125000
+      Collection: *encrypted_coll
+      MetricsName: "load"
+      Operations:
+      - OperationName: insertOne
+        OperationMetricsName: inserts
+        OperationCommand:
+          Document:
+            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_timestamps.txt", "sequential": true, "startFromLine": 500000}}}}
+            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_ages.txt", "sequential": true, "startFromLine": 500000}}}}
+            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_balances.txt", "sequential": true, "startFromLine": 500000}}}}
+            _id: {^Inc: {start: 0, multiplier: 500000}}
+    - *nop
+    
+  - Name: InsertActor_Thread5
+    Type: CrudActor
+    Threads: 1
+    Database: *encrypted_db
+    ClientName: EncryptedPool
+    Phases:
+    - *nop
+    - Repeat: 125000
+      Collection: *encrypted_coll
+      MetricsName: "load"
+      Operations:
+      - OperationName: insertOne
+        OperationMetricsName: inserts
+        OperationCommand:
+          Document:
+            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_timestamps.txt", "sequential": true, "startFromLine": 625000}}}}
+            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_ages.txt", "sequential": true, "startFromLine": 625000}}}}
+            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_balances.txt", "sequential": true, "startFromLine": 625000}}}}
+            _id: {^Inc: {start: 0, multiplier: 500000}}
+    - *nop
+    
+  - Name: InsertActor_Thread6
+    Type: CrudActor
+    Threads: 1
+    Database: *encrypted_db
+    ClientName: EncryptedPool
+    Phases:
+    - *nop
+    - Repeat: 125000
+      Collection: *encrypted_coll
+      MetricsName: "load"
+      Operations:
+      - OperationName: insertOne
+        OperationMetricsName: inserts
+        OperationCommand:
+          Document:
+            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_timestamps.txt", "sequential": true, "startFromLine": 750000}}}}
+            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_ages.txt", "sequential": true, "startFromLine": 750000}}}}
+            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_balances.txt", "sequential": true, "startFromLine": 750000}}}}
+            _id: {^Inc: {start: 0, multiplier: 500000}}
+    - *nop
+    
+  - Name: InsertActor_Thread7
+    Type: CrudActor
+    Threads: 1
+    Database: *encrypted_db
+    ClientName: EncryptedPool
+    Phases:
+    - *nop
+    - Repeat: 125000
+      Collection: *encrypted_coll
+      MetricsName: "load"
+      Operations:
+      - OperationName: insertOne
+        OperationMetricsName: inserts
+        OperationCommand:
+          Document:
+            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_timestamps.txt", "sequential": true, "startFromLine": 875000}}}}
+            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_ages.txt", "sequential": true, "startFromLine": 875000}}}}
+            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_balances.txt", "sequential": true, "startFromLine": 875000}}}}
+            _id: {^Inc: {start: 0, multiplier: 500000}}
+    - *nop
+    
+
+
+
+
+  - Name: LoggingActor0
+    Type: LoggingActor
+    Threads: 1
+    Phases:
+      - *nop
+      - Phase: 1..2
+        LogEvery: 5 minutes
+        Blocking: None
+
+AutoRun:
+- When:
+    mongodb_setup:
+      $eq:
+      - single-replica-fle
+    branch_name:
+      $gte: v7.0
