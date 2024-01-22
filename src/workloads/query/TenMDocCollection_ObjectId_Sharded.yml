@@ -38,7 +38,6 @@ Actors:
           OperationCommand:
             shardCollection: *Namespace
             key: {_id: "hashed"}
-            numInitialChunks: 12
 
 - LoadObjectIDs:
   LoadConfig:
@@ -101,8 +100,4 @@ AutoRun:
     mongodb_setup:
       $eq:
       - shard
-      - shard-query-stats
-      - shard-limited-query-stats
       - shard-lite
-      - shard-lite-query-stats
-      - shard-lite-limited-query-stats

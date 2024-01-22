@@ -3,7 +3,7 @@ import structlog
 import sys
 import os
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import click
 from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 
@@ -63,7 +63,7 @@ def cli(ctx: click.Context, verbose: bool) -> None:
     help=(
         "Specify the linux distro you're on; if your system isn't available,"
         " please contact us at #performance-tooling-users. Specify not-linux for macOS."
-        " If no value is specified, it will be autodetected." 
+        " If no value is specified, it will be autodetected."
     ),
 )
 @click.option(
@@ -380,7 +380,7 @@ def benchmark_test(ctx: click.Context) -> None:
 @click.pass_context
 def workload(
     ctx: click.Context,
-    workload_yaml: tuple[str],
+    workload_yaml: Tuple[str],
     mongo_uri: str,
     mongostream_uri: Optional[str],
     verbosity: str,
@@ -593,12 +593,20 @@ def lint_yaml(ctx: click.Context):
     required=True,
     type=click.Choice(["all_tasks", "variant_tasks", "patch_tasks"]),
 )
+@click.option(
+    "--dry-run",
+    required=False,
+    default=False,
+    is_flag=True,
+    help=("Dry-run without generating tasks. Used for testing workload YAML files."),
+)
 @click.pass_context
-def auto_tasks(ctx: click.Context, tasks: str):
+def auto_tasks(ctx: click.Context, tasks: str, dry_run: bool):
     from genny.tasks import auto_tasks
 
     auto_tasks.main(
         mode_name=tasks,
+        dry_run=dry_run,
         workspace_root=ctx.obj["WORKSPACE_ROOT"],
     )
 
@@ -614,18 +622,20 @@ def auto_tasks(ctx: click.Context, tasks: str):
 )
 @click.option(
     "--project-file",
+    "project_files",
     required=True,
+    multiple=True,
     help="An evergreen project file, such as system_perf.yml",
 )
 @click.option(
     "--no-activate", default=False, is_flag=True, help="Ensure that generated tasks don't activate"
 )
 @click.pass_context
-def auto_tasks_all(ctx: click.Context, project_file: str, no_activate: bool):
+def auto_tasks_all(ctx: click.Context, project_files: List[str], no_activate: bool):
     from genny.tasks import auto_tasks_all
 
     auto_tasks_all.main(
-        project_file=project_file,
+        project_files=project_files,
         workspace_root=ctx.obj["WORKSPACE_ROOT"],
         no_activate=no_activate,
     )

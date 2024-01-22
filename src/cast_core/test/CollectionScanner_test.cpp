@@ -76,7 +76,7 @@ void testOneActor(genny::NodeSource& config,
 }
 
 
-TEST_CASE_METHOD(MongoTestFixture, "CollectionScanner", "[standalone][CollectionScanner]") {
+TEST_CASE_METHOD(MongoTestFixture, "CollectionScanner", "[single_node_replset][three_node_replset][sharded][CollectionScanner]") {
 
     SECTION("Scan documents in all collections of a database") {
         genny::NodeSource config(R"(
@@ -117,10 +117,11 @@ TEST_CASE_METHOD(MongoTestFixture, "CollectionScanner", "[standalone][Collection
             // only do a find on the first collection.
             testOneActor(config,
                          10,
-                         "listCollections:find:find:"  // 1st phase, 1st call
-                         "listCollections:find:find:"  // 1st phase, 2nd call
-                         "listCollections:find:"       // 2nd phase, 1st call
-                         "listCollections:find:");     // 2nd phase, 2nd call
+                         "ping:"
+                         "listCollections:find:find:commitTransaction:"  // 1st phase, 1st call
+                         "listCollections:find:find:commitTransaction:"  // 1st phase, 2nd call
+                         "listCollections:find:commitTransaction:"       // 2nd phase, 1st call
+                         "listCollections:find:commitTransaction:");     // 2nd phase, 2nd call
         } catch (const std::exception& e) {
             auto diagInfo = boost::diagnostic_information(e);
             INFO("CAUGHT " << diagInfo);
@@ -129,7 +130,8 @@ TEST_CASE_METHOD(MongoTestFixture, "CollectionScanner", "[standalone][Collection
     }
 }
 
-TEST_CASE_METHOD(MongoTestFixture, "CollectionScannerAll", "[standalone][CollectionScanner]") {
+
+TEST_CASE_METHOD(MongoTestFixture, "CollectionScannerAll", "[single_node_replset][three_node_replset][sharded][CollectionScanner]") {
 
     SECTION("Scan documents in all collections of multiple databases") {
         genny::NodeSource config2(R"(
@@ -170,14 +172,15 @@ TEST_CASE_METHOD(MongoTestFixture, "CollectionScannerAll", "[standalone][Collect
             // we'll satisfy that in the middle of the 4th collection scan.
             testOneActor(config2,
                          5,
+                         "ping:"
                          "listCollections:listCollections:"  // 1st phase, 1st call
-                         "find:find:find:find:find:"
+                         "find:find:find:find:find:commitTransaction:"
                          "listCollections:listCollections:"  // 1st phase, 2nd call
-                         "find:find:find:find:find:"
+                         "find:find:find:find:find:commitTransaction:"
                          "listCollections:listCollections:"  // 2nd phase, 1st call
-                         "find:find:find:find:"
+                         "find:find:find:find:commitTransaction:"
                          "listCollections:listCollections:"  // 2nd phase, 2nd call
-                         "find:find:find:find:");
+                         "find:find:find:find:commitTransaction:");
 
         } catch (const std::exception& e) {
             auto diagInfo = boost::diagnostic_information(e);
@@ -188,7 +191,7 @@ TEST_CASE_METHOD(MongoTestFixture, "CollectionScannerAll", "[standalone][Collect
 }
 
 
-TEST_CASE_METHOD(MongoTestFixture, "CollectionScannerGenerateCollectionNames", "[standalone][CollectionScanner]") {
+TEST_CASE_METHOD(MongoTestFixture, "CollectionScannerGenerateCollectionNames", "[single_node_replset][three_node_replset][sharded][CollectionScanner]") {
 
     SECTION("Scan no limits") {
         genny::NodeSource config2(R"(
@@ -219,7 +222,9 @@ TEST_CASE_METHOD(MongoTestFixture, "CollectionScannerGenerateCollectionNames", "
             // Don't generate the collection names, get them from the database.
             testOneActor(config2,
                          5,
-                         "listCollections:find:find:listCollections:find:find:");
+                         "ping:"
+                         "listCollections:find:find:commitTransaction:"
+                         "listCollections:find:find:commitTransaction:");
 
         } catch (const std::exception& e) {
             auto diagInfo = boost::diagnostic_information(e);
@@ -257,7 +262,7 @@ TEST_CASE_METHOD(MongoTestFixture, "CollectionScannerGenerateCollectionNames", "
             // Don't generate the collection names, get them from the database.
             testOneActor(config2,
                          5,
-                         "listCollections:find:find:listCollections:find:find:");
+                         "ping:listCollections:find:find:listCollections:find:find:");
 
         } catch (const std::exception& e) {
             auto diagInfo = boost::diagnostic_information(e);
@@ -336,7 +341,7 @@ TEST_CASE_METHOD(MongoTestFixture, "CollectionScannerGenerateCollectionNames", "
             // Generate the collection names.
             testOneActor(config2,
                          5,
-                         "find:find:");
+                         "ping:find:find:");
 
         } catch (const std::exception& e) {
             auto diagInfo = boost::diagnostic_information(e);
