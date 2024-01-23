@@ -2,8 +2,11 @@ SchemaVersion: 2018-07-01
 Owner: "@10gen/server-security"
 Description: |
   QE Range Release Criteria Experiment
-Database: &encrypted_db genny_release_criteria
-Collection: &encrypted_coll coll
+
+GlobalDefaults:
+  MyDatabase: &encrypted_db genny_release_criteria
+  MyCollection: &encrypted_coll my_coll
+  NopAlias: &nop {Nop: true}
 
 
 Encryption:
@@ -31,19 +34,12 @@ Clients:
       KeyVaultDatabase: "keyvault"
       KeyVaultCollection: "datakeys"
       EncryptedCollections:
-      - genny_release_criteria.coll
+      - genny_release_criteria.my_coll
   
 
 Actors:
-  - Name: DataGenerator
-    Type: Python
-    Threads: 1
-    Phases:
-    - Repeat: 1
-      Module: qe_range_data_generation
-      Endpoint: generate_all_data
-    - &nop {Nop: true}
-    - *nop
+  
+  
   
   - Name: InsertActor_Thread0
     Type: CrudActor
@@ -60,9 +56,9 @@ Actors:
         OperationMetricsName: inserts
         OperationCommand:
           Document:
-            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_timestamps.txt", "sequential": true, "startFromLine": 0}}}}
-            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_ages.txt", "sequential": true, "startFromLine": 0}}}}
-            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_balances.txt", "sequential": true, "startFromLine": 0}}}}
+            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_timestamps.txt", "sequential": true, "startFromLine": 0}}}}
+            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_ages.txt", "sequential": true, "startFromLine": 0}}}}
+            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_balances.txt", "sequential": true, "startFromLine": 0}}}}
             _id: {^Inc: {start: 0, multiplier: 500000}}
     - *nop
     
@@ -81,9 +77,9 @@ Actors:
         OperationMetricsName: inserts
         OperationCommand:
           Document:
-            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_timestamps.txt", "sequential": true, "startFromLine": 125000}}}}
-            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_ages.txt", "sequential": true, "startFromLine": 125000}}}}
-            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_balances.txt", "sequential": true, "startFromLine": 125000}}}}
+            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_timestamps.txt", "sequential": true, "startFromLine": 125000}}}}
+            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_ages.txt", "sequential": true, "startFromLine": 125000}}}}
+            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_balances.txt", "sequential": true, "startFromLine": 125000}}}}
             _id: {^Inc: {start: 0, multiplier: 500000}}
     - *nop
     
@@ -102,9 +98,9 @@ Actors:
         OperationMetricsName: inserts
         OperationCommand:
           Document:
-            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_timestamps.txt", "sequential": true, "startFromLine": 250000}}}}
-            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_ages.txt", "sequential": true, "startFromLine": 250000}}}}
-            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_balances.txt", "sequential": true, "startFromLine": 250000}}}}
+            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_timestamps.txt", "sequential": true, "startFromLine": 250000}}}}
+            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_ages.txt", "sequential": true, "startFromLine": 250000}}}}
+            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_balances.txt", "sequential": true, "startFromLine": 250000}}}}
             _id: {^Inc: {start: 0, multiplier: 500000}}
     - *nop
     
@@ -123,9 +119,9 @@ Actors:
         OperationMetricsName: inserts
         OperationCommand:
           Document:
-            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_timestamps.txt", "sequential": true, "startFromLine": 375000}}}}
-            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_ages.txt", "sequential": true, "startFromLine": 375000}}}}
-            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_balances.txt", "sequential": true, "startFromLine": 375000}}}}
+            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_timestamps.txt", "sequential": true, "startFromLine": 375000}}}}
+            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_ages.txt", "sequential": true, "startFromLine": 375000}}}}
+            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_balances.txt", "sequential": true, "startFromLine": 375000}}}}
             _id: {^Inc: {start: 0, multiplier: 500000}}
     - *nop
     
@@ -144,9 +140,9 @@ Actors:
         OperationMetricsName: inserts
         OperationCommand:
           Document:
-            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_timestamps.txt", "sequential": true, "startFromLine": 500000}}}}
-            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_ages.txt", "sequential": true, "startFromLine": 500000}}}}
-            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_balances.txt", "sequential": true, "startFromLine": 500000}}}}
+            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_timestamps.txt", "sequential": true, "startFromLine": 500000}}}}
+            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_ages.txt", "sequential": true, "startFromLine": 500000}}}}
+            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_balances.txt", "sequential": true, "startFromLine": 500000}}}}
             _id: {^Inc: {start: 0, multiplier: 500000}}
     - *nop
     
@@ -165,9 +161,9 @@ Actors:
         OperationMetricsName: inserts
         OperationCommand:
           Document:
-            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_timestamps.txt", "sequential": true, "startFromLine": 625000}}}}
-            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_ages.txt", "sequential": true, "startFromLine": 625000}}}}
-            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_balances.txt", "sequential": true, "startFromLine": 625000}}}}
+            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_timestamps.txt", "sequential": true, "startFromLine": 625000}}}}
+            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_ages.txt", "sequential": true, "startFromLine": 625000}}}}
+            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_balances.txt", "sequential": true, "startFromLine": 625000}}}}
             _id: {^Inc: {start: 0, multiplier: 500000}}
     - *nop
     
@@ -186,9 +182,9 @@ Actors:
         OperationMetricsName: inserts
         OperationCommand:
           Document:
-            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_timestamps.txt", "sequential": true, "startFromLine": 750000}}}}
-            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_ages.txt", "sequential": true, "startFromLine": 750000}}}}
-            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_balances.txt", "sequential": true, "startFromLine": 750000}}}}
+            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_timestamps.txt", "sequential": true, "startFromLine": 750000}}}}
+            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_ages.txt", "sequential": true, "startFromLine": 750000}}}}
+            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_balances.txt", "sequential": true, "startFromLine": 750000}}}}
             _id: {^Inc: {start: 0, multiplier: 500000}}
     - *nop
     
@@ -207,9 +203,9 @@ Actors:
         OperationMetricsName: inserts
         OperationCommand:
           Document:
-            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_timestamps.txt", "sequential": true, "startFromLine": 875000}}}}
-            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_ages.txt", "sequential": true, "startFromLine": 875000}}}}
-            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "qe_range_rc_timestamp_t1_insert_only_cf4_tf8.yml_tmpfiles/data/rc_balances.txt", "sequential": true, "startFromLine": 875000}}}}
+            tm_retail_tx: {^ConvertToInt: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_timestamps.txt", "sequential": true, "startFromLine": 875000}}}}
+            age_hospitals: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_ages.txt", "sequential": true, "startFromLine": 875000}}}}
+            bnk_bal: {^ConvertToDecimal: {from: {^ChooseFromDataset:{"path": "./src/genny/src/workloads/contrib/qe_range_testing/data/rc_balances.txt", "sequential": true, "startFromLine": 875000}}}}
             _id: {^Inc: {start: 0, multiplier: 500000}}
     - *nop
     
