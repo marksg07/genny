@@ -144,6 +144,7 @@ def cli():
 )
 @click.argument("workload_yaml", nargs=1)
 def generate_all_data(workload_yaml):
+    random.seed(42)
     dirpath = os.path.basename(workload_yaml) + '_tmpfiles'
     os.makedirs(dirpath + '/data', exist_ok=True)
     os.makedirs(dirpath + '/queries', exist_ok=True)

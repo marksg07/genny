@@ -4,17 +4,17 @@ Description: |
   Queryable Encryption Range Experiment 1
 
 Encryption:
-  {% if use_crypt_shared_lib %}
+  
   UseCryptSharedLib: true
-  CryptSharedLibPath: {{ crypt_shared_lib_path }}
-  {% endif %}
+  CryptSharedLibPath: /home/ubuntu/mongo_crypt/lib/mongo_crypt_v1.so
+  
   EncryptedCollections:
   - Database: &encrypted_db genny_qerangebench_experiment1
     Collection: &encrypted_coll OneFieldOneValue
     EncryptionType: queryable
 
     QueryableEncryptedFields:
-      field1: { type: "int", queries: [{queryType: "rangePreview", min: 0, max: {{ upper_bound }}, contention: {{ contention_factor }}, sparsity: {{ sparsity }}, trimFactor: 0}] }
+      field1: { type: "int", queries: [{queryType: "rangePreview", min: 0, max: 2147483647, contention: 4, sparsity: 2, trimFactor: 0}] }
 
 Clients:
   EncryptedPool:
@@ -29,11 +29,11 @@ Clients:
 Actors:
   - Name: InsertActor
     Type: CrudActor
-    Threads: {{ insert_threads }}
+    Threads: 8
     Database: *encrypted_db
     ClientName: &encrypted_pool EncryptedPool
     Phases:
-    - Repeat: {{ document_count // insert_threads }}
+    - Repeat: 125
       Collection: *encrypted_coll
       MetricsName: "load"
       Operations:
@@ -46,15 +46,15 @@ Actors:
     - &nop {Nop: true}
 
   # We have a separate single-thread actor, each of which performs a different 1/(query_threads) of the queries.
-  {% for t in range(query_threads) %}
-  - Name: PreDefinedRangeQueryActor_Thread{{ t }}
+  
+  - Name: PreDefinedRangeQueryActor_Thread0
     Type: CrudActor
     Threads: 1
     Database: *encrypted_db
     ClientName: *encrypted_pool
     Phases:
     - *nop
-    - Repeat: {{ query_count // query_threads }}
+    - Repeat: 1000
       Collection: *encrypted_coll
       MetricsName: "query"
       Operations:
@@ -62,12 +62,12 @@ Actors:
         OperationMetricsName: range_query
         OperationCommand:
           Filter: {field1: {
-              $gte: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ query_min_file }}", "sequential": true, "startFromLine": {{ t * query_count // query_threads }}}}}},
-              $lte: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "{{ query_max_file }}", "sequential": true, "startFromLine": {{ t * query_count // query_threads }}}}}}
+              $gte: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "./src/workloads/contrib/qe_range_testing/queries/experiment1_1_min_ub2147483647.txt", "sequential": true, "startFromLine": 0}}}},
+              $lte: {^ConvertToInt32: {from: {^ChooseFromDataset:{"path": "./src/workloads/contrib/qe_range_testing/queries/experiment1_1_max_ub2147483647.txt", "sequential": true, "startFromLine": 0}}}}
             }
           }
 
- {% endfor %}
+ 
 
 
   - Name: LoggingActor0

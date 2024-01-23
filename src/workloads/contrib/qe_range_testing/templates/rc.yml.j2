@@ -2,8 +2,11 @@ SchemaVersion: 2018-07-01
 Owner: "@10gen/server-security"
 Description: |
   QE Range Release Criteria Experiment
-Database: &encrypted_db genny_release_criteria
-Collection: &encrypted_coll coll
+
+GlobalDefaults:
+  MyDatabase: &encrypted_db genny_release_criteria
+  MyCollection: &encrypted_coll my_coll
+  NopAlias: &nop {Nop: true}
 
 {% if encrypt %}
 Encryption:
@@ -31,19 +34,20 @@ Clients:
       KeyVaultDatabase: "keyvault"
       KeyVaultCollection: "datakeys"
       EncryptedCollections:
-      - genny_release_criteria.coll
+      - genny_release_criteria.my_coll
   {% endif %}
 
 Actors:
-  - Name: DataGenerator
+  {# - Name: DataGenerator
     Type: Python
     Threads: 1
     Phases:
     - Repeat: 1
       Module: qe_range_data_generation
       Endpoint: generate_all_data
-    - &nop {Nop: true}
     - *nop
+    - *nop #}
+  
   {% for t in range(insert_threads) %}
   - Name: InsertActor_Thread{{ t }}
     Type: CrudActor

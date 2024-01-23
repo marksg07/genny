@@ -10,96 +10,96 @@ env = Environment(
 
 insert_threads = 8
 query_threads = 1
-document_count = 100000
-query_count = 10000
+document_count = 1000
+query_count = 1000
 assert document_count % insert_threads == 0
 assert query_count % query_threads == 0
 
-class Experiment1Stuff:
-    def generate_queries(n, ub):
-        queries = []
-        for _ in range(n):
-            v1 = randint(1, ub)
-            v2 = randint(1, ub)
-            queries.append((min(v1, v2), max(v1, v2)))
-        return queries
+# class Experiment1Stuff:
+def generate_queries(n, ub):
+    queries = []
+    for _ in range(n):
+        v1 = randint(1, ub)
+        v2 = randint(1, ub)
+        queries.append((min(v1, v2), max(v1, v2)))
+    return queries
 
-    def export_queries(queries, query_min_file, query_max_file):
-        with open(query_min_file, 'w+') as minf:
-            minf.writelines(f'{lower}\n' for lower, _ in queries)
+def export_queries(queries, query_min_file, query_max_file):
+    with open(query_min_file, 'w+') as minf:
+        minf.writelines(f'{lower}\n' for lower, _ in queries)
 
-        with open(query_max_file, 'w+') as maxf:
-            maxf.writelines(f'{upper}\n' for _, upper in queries)
-                
+    with open(query_max_file, 'w+') as maxf:
+        maxf.writelines(f'{upper}\n' for _, upper in queries)
+            
 
-    def query_minmax_file_names(upper_bound):
-        s = f'queries/experiment1_1_{{}}_ub{upper_bound}.txt'
-        return (s.format("min"), s.format("max"))
+def query_minmax_file_names(upper_bound):
+    s = f'queries/experiment1_1_{{}}_ub{upper_bound}.txt'
+    return (s.format("min"), s.format("max"))
 
-    def range_list_file_name(upper_bound):
-        return f'queries/experiment1_1_ranges_ub{upper_bound}.txt'
+def range_list_file_name(upper_bound):
+    return f'queries/experiment1_1_ranges_ub{upper_bound}.txt'
 
-    def generate_all_queries_for_experiment1():
-        for upper_bound in [2**9-1, 2**13-1, 2**17-1, 2**31-1]:
-            queries = generate_queries(query_count, upper_bound)
-            minf, maxf = query_minmax_file_names(upper_bound)
-            export_queries(queries, minf, maxf)
-
-    
-    def generate_all_workloads_for_experiment1(is_local):
-        if is_local: 
-            basedir = './src/workloads/contrib/qe_range_testing/'
-        else: 
-            basedir = './src/genny/src/workloads/contrib/qe_range_testing/'
-        if is_local:
-            crypt_path = '/home/ubuntu/mongo_crypt/lib/mongo_crypt_v1.so'
-        else:
-            crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
-        wldir = 'local' if is_local else 'evergreen'
-        main_template = env.get_template("experiment-1.yml.j2")
-        storage_template = env.get_template("experiment-1-storage.yml.j2")
-        for upper_bound in [2**9-1, 2**13-1, 2**17-1, 2**31-1]:
-            minf, maxf = query_minmax_file_names(upper_bound)
-            for sparsity in [1, 2, 3, 4]:
-                for contention in [0, 4, 8]: 
-                    with open(f'workloads/{wldir}/experiment1_1_c{contention}_s{sparsity}_ub{upper_bound}.yml', 'w+') as f:
-                        f.write(main_template.render(upper_bound=upper_bound, contention_factor=contention, sparsity=sparsity, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, query_min_file=basedir + minf, query_max_file=basedir + maxf, use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
-        with open(f'workloads/{wldir}/experiment1_1_storage_unencrypted.yml', 'w+') as f:
-            f.write(storage_template.render(use_encryption=False, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, query_min_file=basedir + minf, query_max_file=basedir + maxf, use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
-
-    def generate_all_workloads_for_experiment0(is_local):
-        if is_local:
-            crypt_path = '/home/ubuntu/mongo_crypt/lib/mongo_crypt_v1.so'
-        else:
-            crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
-        wldir = 'local' if is_local else 'evergreen'
-        main_template = env.get_template("experiment-0.yml.j2")
-        for upper_bound in [2**9-1, 2**31-1]:
-            for sparsity in [1, 4]:
-                for contention in [0, 8]: 
-                    for small in [False, True]:
-                        if small:
-                            query_max = 2
-                        else:
-                            query_max = upper_bound - 1
-                        with open(f'workloads/{wldir}/experiment0_c{contention}_s{sparsity}_ub{upper_bound}_{"small" if small else "big"}.yml', 'w+') as f:
-                            f.write(main_template.render(upper_bound=upper_bound, contention_factor=contention, sparsity=sparsity, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, query_min=1, query_max=query_max, use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
+def generate_all_queries_for_experiment1():
+    for upper_bound in [2**9-1, 2**13-1, 2**17-1, 2**31-1]:
+        queries = generate_queries(query_count, upper_bound)
+        minf, maxf = query_minmax_file_names(upper_bound)
+        export_queries(queries, minf, maxf)
 
 
-    def print_wl_names():
-        fmt = '    - "qe_range_testing_workloads_evergreen_{}"'
+def generate_all_workloads_for_experiment1(is_local):
+    if is_local: 
+        basedir = './src/workloads/contrib/qe_range_testing/'
+    else: 
+        basedir = './src/genny/src/workloads/contrib/qe_range_testing/'
+    if is_local:
+        crypt_path = '/home/ubuntu/mongo_crypt/lib/mongo_crypt_v1.so'
+    else:
+        crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
+    wldir = 'local' if is_local else 'evergreen'
+    main_template = env.get_template("experiment-1.yml.j2")
+    storage_template = env.get_template("experiment-1-storage.yml.j2")
+    for upper_bound in [2**9-1, 2**13-1, 2**17-1, 2**31-1]:
+        minf, maxf = query_minmax_file_names(upper_bound)
+        for sparsity in [1, 2, 3, 4]:
+            for contention in [0, 4, 8]: 
+                with open(f'workloads/{wldir}/experiment1_1_c{contention}_s{sparsity}_ub{upper_bound}.yml', 'w+') as f:
+                    f.write(main_template.render(upper_bound=upper_bound, contention_factor=contention, sparsity=sparsity, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, query_min_file=basedir + minf, query_max_file=basedir + maxf, use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
+    with open(f'workloads/{wldir}/experiment1_1_storage_unencrypted.yml', 'w+') as f:
+        f.write(storage_template.render(use_encryption=False, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, query_min_file=basedir + minf, query_max_file=basedir + maxf, use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
 
-        for upper_bound in [2**9-1, 2**13-1, 2**17-1, 2**31-1]:
-            for sparsity in [1, 2, 3, 4]:
-                for contention in [0, 4, 8]: 
-                    s = f'experiment1_1_c{contention}_s{sparsity}_ub{upper_bound}'
-                    print(fmt.format(s))
-        print(fmt.format('experiment1_1_storage_unencrypted'))
-        for upper_bound in [2**9-1, 2**31-1]:
-            for sparsity in [1, 4]:
-                for contention in [0, 8]: 
-                    for small in [False, True]:
-                        print(fmt.format(f'experiment0_c{contention}_s{sparsity}_ub{upper_bound}_{"small" if small else "big"}'))
+def generate_all_workloads_for_experiment0(is_local):
+    if is_local:
+        crypt_path = '/home/ubuntu/mongo_crypt/lib/mongo_crypt_v1.so'
+    else:
+        crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
+    wldir = 'local' if is_local else 'evergreen'
+    main_template = env.get_template("experiment-0.yml.j2")
+    for upper_bound in [2**9-1, 2**31-1]:
+        for sparsity in [1, 4]:
+            for contention in [0, 8]: 
+                for small in [False, True]:
+                    if small:
+                        query_max = 2
+                    else:
+                        query_max = upper_bound - 1
+                    with open(f'workloads/{wldir}/experiment0_c{contention}_s{sparsity}_ub{upper_bound}_{"small" if small else "big"}.yml', 'w+') as f:
+                        f.write(main_template.render(upper_bound=upper_bound, contention_factor=contention, sparsity=sparsity, document_count=document_count, query_count=query_count, insert_threads=insert_threads, query_threads=query_threads, query_min=1, query_max=query_max, use_crypt_shared_lib=True, crypt_shared_lib_path=crypt_path))
+
+
+def print_wl_names():
+    fmt = '    - "qe_range_testing_workloads_evergreen_{}"'
+
+    for upper_bound in [2**9-1, 2**13-1, 2**17-1, 2**31-1]:
+        for sparsity in [1, 2, 3, 4]:
+            for contention in [0, 4, 8]: 
+                s = f'experiment1_1_c{contention}_s{sparsity}_ub{upper_bound}'
+                print(fmt.format(s))
+    print(fmt.format('experiment1_1_storage_unencrypted'))
+    for upper_bound in [2**9-1, 2**31-1]:
+        for sparsity in [1, 4]:
+            for contention in [0, 8]: 
+                for small in [False, True]:
+                    print(fmt.format(f'experiment0_c{contention}_s{sparsity}_ub{upper_bound}_{"small" if small else "big"}'))
 
 
 #class Experiment2Stuff:
@@ -593,130 +593,130 @@ def generate_config_file_for_experiment_q3():
     with open('generated/experiment_q3_perfconfig.yml', 'w') as f:
         f.write(template.render(patch_id=patch_id, experiments = experiments))
 
-# def generate_rc_trans_times():
-#     return [random.randint(0, 10**10) for _ in range(1000000)]
+def generate_rc_trans_times():
+    return [random.randint(0, 10**10) for _ in range(1000000)]
 
-# def get_zipf_freqlist(total_count, num_distinct, alpha):
-#     H = calculate_harmonic_sum(num_distinct, alpha)
-#     sum_freq = 0
-#     freq_list = []
+def get_zipf_freqlist(total_count, num_distinct, alpha):
+    H = calculate_harmonic_sum(num_distinct, alpha)
+    sum_freq = 0
+    freq_list = []
 
-#     for i in range(num_distinct):
-#         f_i = max(1, int(round(total_count * (math.pow(i + 1, -alpha) / H))))
-#         freq_list.append(f_i)
-#         sum_freq += f_i
+    for i in range(num_distinct):
+        f_i = max(1, int(round(total_count * (math.pow(i + 1, -alpha) / H))))
+        freq_list.append(f_i)
+        sum_freq += f_i
 
-#     if sum_freq != total_count:
-#         freq_list[0] -= sum_freq - total_count
-#         print(sum_freq - total_count)
-#         assert freq_list[0] > freq_list[1]
-#     return freq_list
+    if sum_freq != total_count:
+        freq_list[0] -= sum_freq - total_count
+        print(sum_freq - total_count)
+        assert freq_list[0] > freq_list[1]
+    return freq_list
 
-# def generate_rc_ages():
-#     data = []
-#     # SD1
-#     freqlist1 = get_zipf_freqlist(400000, 10800, 2)
-#     print(freqlist1[:10])
-#     values1 = list(range(1, 10801))
-#     for i in range(10800):
-#         data += [values1[i]] * freqlist1[i]
+def generate_rc_ages():
+    data = []
+    # SD1
+    freqlist1 = get_zipf_freqlist(400000, 10800, 2)
+    print(freqlist1[:10])
+    values1 = list(range(1, 10801))
+    for i in range(10800):
+        data += [values1[i]] * freqlist1[i]
 
-#     # SD2
-#     freqlist2 = get_zipf_freqlist(400000, 28800 - 10800, 2)
-#     print(freqlist2[:10])
-#     values2 = list(range(28800, 10800, -1))
-#     for i in range(28800 - 10800):
-#         data += [values2[i]] * freqlist2[i]
+    # SD2
+    freqlist2 = get_zipf_freqlist(400000, 28800 - 10800, 2)
+    print(freqlist2[:10])
+    values2 = list(range(28800, 10800, -1))
+    for i in range(28800 - 10800):
+        data += [values2[i]] * freqlist2[i]
 
-#     # SD3
-#     freqlist3 = get_zipf_freqlist(200000, 55000 - 28800, 2)
-#     print(freqlist3[:10])
-#     values3 = list(range(28801, 55001))
-#     for i in range(55000 - 28800):
-#         data += [values3[i]] * freqlist3[i]
+    # SD3
+    freqlist3 = get_zipf_freqlist(200000, 55000 - 28800, 2)
+    print(freqlist3[:10])
+    values3 = list(range(28801, 55001))
+    for i in range(55000 - 28800):
+        data += [values3[i]] * freqlist3[i]
 
-#     random.shuffle(data)
-#     return data
+    random.shuffle(data)
+    return data
 
-# def generate_rc_balances():
-#     data = []
-#     freqlist = get_zipf_freqlist(1000000, 1000, 2)
-#     print(freqlist[:10])
-#     for i in range(1000):
-#         for _ in range(freqlist[i]):
-#             r = random.randint(i * 100000 + 1, (i+1) * 100000)
-#             r /= 100.
-#             data.append(r)
-#     random.shuffle(data)
-#     return data
+def generate_rc_balances():
+    data = []
+    freqlist = get_zipf_freqlist(1000000, 1000, 2)
+    print(freqlist[:10])
+    for i in range(1000):
+        for _ in range(freqlist[i]):
+            r = random.randint(i * 100000 + 1, (i+1) * 100000)
+            r /= 100.
+            data.append(r)
+    random.shuffle(data)
+    return data
 
-# def uniform_int_query(minb, maxb, size):
-#     low = random.randint(minb, maxb - size + 1)
-#     return (low, low + size - 1)
+def uniform_int_query(minb, maxb, size):
+    low = random.randint(minb, maxb - size + 1)
+    return (low, low + size - 1)
 
-# def uniform_int_queries(minb, maxb, size, n):
-#     return [uniform_int_query(minb, maxb, size) for _ in range(n)]
+def uniform_int_queries(minb, maxb, size, n):
+    return [uniform_int_query(minb, maxb, size) for _ in range(n)]
 
-# def uniform_int_size_range_query(minb, maxb, minsize, maxsize):
-#     return uniform_int_query(minb, maxb, random.randint(minsize, maxsize))
+def uniform_int_size_range_query(minb, maxb, minsize, maxsize):
+    return uniform_int_query(minb, maxb, random.randint(minsize, maxsize))
 
-# def uniform_int_size_range_queries(minb, maxb, minsize, maxsize, n):
-#     return [uniform_int_size_range_query(minb, maxb, minsize, maxsize) for _ in range(n)]
+def uniform_int_size_range_queries(minb, maxb, minsize, maxsize, n):
+    return [uniform_int_size_range_query(minb, maxb, minsize, maxsize) for _ in range(n)]
 
-# def generate_rc_timestamp_queries():
-#     return {'t1': uniform_int_queries(0, 10**10, 3600, 100000),
-#             't2': uniform_int_queries(0, 10**10, 86400, 100000),
-#             't3': uniform_int_queries(0, 10**10, 604800, 100000)}
+def generate_rc_timestamp_queries():
+    return {'t1': uniform_int_queries(0, 10**10, 3600, 100000),
+            't2': uniform_int_queries(0, 10**10, 86400, 100000),
+            't3': uniform_int_queries(0, 10**10, 604800, 100000)}
 
-# def generate_rc_age_queries():
-#     q = uniform_int_size_range_queries(540, 28260, 1, 100, 50000)
-#     q += uniform_int_size_range_queries(29160, 54000, 1, 100, 50000)
-#     random.shuffle(q)
-#     return {'t': q}
+def generate_rc_age_queries():
+    q = uniform_int_size_range_queries(540, 28260, 1, 100, 50000)
+    q += uniform_int_size_range_queries(29160, 54000, 1, 100, 50000)
+    random.shuffle(q)
+    return {'t': q}
 
-# def generate_rc_balance_queries():
-#     return {'t1': [(t[0]/100., t[1]/100.) for t in uniform_int_size_range_queries(80000000, 100000000, 1, 1000, 100000)],
-#             't2': [(t[0]/100., t[1]/100.) for t in uniform_int_size_range_queries(80000000, 100000000, 1, 1000000, 100000)],
-#             't3': [(t[0]/100., t[1]/100.) for t in uniform_int_size_range_queries(80000000, 100000000, 1, 20000000, 100000)]}
+def generate_rc_balance_queries():
+    return {'t1': [(t[0]/100., t[1]/100.) for t in uniform_int_size_range_queries(80000000, 100000000, 1, 1000, 100000)],
+            't2': [(t[0]/100., t[1]/100.) for t in uniform_int_size_range_queries(80000000, 100000000, 1, 1000000, 100000)],
+            't3': [(t[0]/100., t[1]/100.) for t in uniform_int_size_range_queries(80000000, 100000000, 1, 20000000, 100000)]}
 
 rc_age_file = 'data/rc_ages.txt'
 rc_balance_file = 'data/rc_balances.txt'
 rc_timestamp_file = 'data/rc_timestamps.txt'
 
-# def generate_rc_all_inserts():
-#     bals = generate_rc_balances()
-#     with open(rc_balance_file, 'w') as f:
-#         f.write('\n'.join([str(round(bal,2)) for bal in bals]))
+def generate_rc_all_inserts():
+    bals = generate_rc_balances()
+    with open(rc_balance_file, 'w') as f:
+        f.write('\n'.join([str(round(bal,2)) for bal in bals]))
     
-#     ages = generate_rc_ages()
-#     with open(rc_age_file, 'w') as f:
-#         f.write('\n'.join([str(age) for age in ages]))
+    ages = generate_rc_ages()
+    with open(rc_age_file, 'w') as f:
+        f.write('\n'.join([str(age) for age in ages]))
 
-#     tss = generate_rc_trans_times()
-#     with open(rc_timestamp_file, 'w') as f:
-#         f.write('\n'.join([str(ts) for ts in tss]))
+    tss = generate_rc_trans_times()
+    with open(rc_timestamp_file, 'w') as f:
+        f.write('\n'.join([str(ts) for ts in tss]))
 
-# def generate_rc_all_queries():
-#     bals = generate_rc_balance_queries()
-#     for t, queries in bals.items():
-#         with open(f'queries/rc_balance_{t}_min.txt', 'w') as f:
-#             f.write('\n'.join(str(round(q[0], 2)) for q in queries))
-#         with open(f'queries/rc_balance_{t}_max.txt', 'w') as f:
-#             f.write('\n'.join(str(round(q[1], 2)) for q in queries))
+def generate_rc_all_queries():
+    bals = generate_rc_balance_queries()
+    for t, queries in bals.items():
+        with open(f'queries/rc_balance_{t}_min.txt', 'w') as f:
+            f.write('\n'.join(str(round(q[0], 2)) for q in queries))
+        with open(f'queries/rc_balance_{t}_max.txt', 'w') as f:
+            f.write('\n'.join(str(round(q[1], 2)) for q in queries))
 
-#     ages = generate_rc_age_queries()
-#     for t, queries in ages.items():
-#         with open(f'queries/rc_age_{t}_min.txt', 'w') as f:
-#             f.write('\n'.join(str(q[0]) for q in queries))
-#         with open(f'queries/rc_age_{t}_max.txt', 'w') as f:
-#             f.write('\n'.join(str(q[1]) for q in queries))
+    ages = generate_rc_age_queries()
+    for t, queries in ages.items():
+        with open(f'queries/rc_age_{t}_min.txt', 'w') as f:
+            f.write('\n'.join(str(q[0]) for q in queries))
+        with open(f'queries/rc_age_{t}_max.txt', 'w') as f:
+            f.write('\n'.join(str(q[1]) for q in queries))
 
-#     tss = generate_rc_timestamp_queries()
-#     for t, queries in tss.items():
-#         with open(f'queries/rc_timestamp_{t}_min.txt', 'w') as f:
-#             f.write('\n'.join(str(q[0]) for q in queries))
-#         with open(f'queries/rc_timestamp_{t}_max.txt', 'w') as f:
-#             f.write('\n'.join(str(q[1]) for q in queries))
+    tss = generate_rc_timestamp_queries()
+    for t, queries in tss.items():
+        with open(f'queries/rc_timestamp_{t}_min.txt', 'w') as f:
+            f.write('\n'.join(str(q[0]) for q in queries))
+        with open(f'queries/rc_timestamp_{t}_max.txt', 'w') as f:
+            f.write('\n'.join(str(q[1]) for q in queries))
 
 query_templates = {
     'age': ['t'],
@@ -774,7 +774,7 @@ def get_field_dict():
 
 def experiment_name(ex):
     if ex['do_fsm']:
-        ratio = f'read{float(ex["query_ratio"])}'
+        ratio = f'read{int(round(ex["query_ratio"]*100))}'
     else:
         ratio = 'insert_only'
 
@@ -785,9 +785,9 @@ def experiment_name(ex):
 
     return f"qe_range_rc_{ex['field']}_{ex['template']}_{ratio}_{cf_tf}"
 
-def add_basedir_info_to_experiment(experiment):
+def add_basedir_info_to_experiment(basedir, experiment):
     ex_name = experiment_name(experiment)
-    basedir = f'{ex_name}.yml_tmpfiles/'
+    #basedir = f'{ex_name}.yml_tmpfiles/'
     experiment['min_file'] = basedir + f'queries/rc_{experiment["field"]}_{experiment["template"]}_min.txt'
     experiment['max_file'] = basedir + f'queries/rc_{experiment["field"]}_{experiment["template"]}_max.txt'
     experiment['insert_file'] = basedir + experiment['insert_file']
@@ -796,7 +796,7 @@ def add_basedir_info_to_experiment(experiment):
     experiment['age_file'] = basedir + rc_age_file
     experiment['balance_file'] = basedir + rc_balance_file
 
-def rc_experiments():
+def rc_experiments(basedir):
     experiments = []
     for field, field_dict in get_field_dict().items():
         for template in query_templates[field]:
@@ -808,11 +808,11 @@ def rc_experiments():
                         for cf in cfs[field]:
                             for tf in tfs[field]:
                                 experiment = {'encrypt': encrypt, 'cf': cf, field + '_cf': cf, 'tf': tf, field + '_tf': tf, **base_dict, **field_dict, **fsm_param}
-                                add_basedir_info_to_experiment(experiment)
+                                add_basedir_info_to_experiment(basedir, experiment)
                                 experiments.append(experiment)
                     else:
                         experiment = {'encrypt': encrypt, **base_dict, **field_dict, **fsm_param}
-                        add_basedir_info_to_experiment(experiment)
+                        add_basedir_info_to_experiment(basedir, experiment)
                         experiments.append(experiment)
     return experiments
 
@@ -827,7 +827,7 @@ def generate_rc_workloads(is_local):
         crypt_path = '/data/workdir/mongocrypt/lib/mongo_crypt_v1.so'
     wldir = 'local' if is_local else 'evergreen'
     template = env.get_template("rc.yml.j2")
-    experiments = rc_experiments()
+    experiments = rc_experiments(basedir)
     for ex in experiments:
         name = experiment_name(ex)
         kwargs = {**default_cf_tfs, **ex}
@@ -875,5 +875,8 @@ def generate_rc_workloads(is_local):
 
 generate_rc_workloads(is_local=False)
 generate_rc_workloads(is_local=True)
+# generate_all_queries_for_experiment1()
+# generate_all_workloads_for_experiment1(is_local=False)
+# generate_all_workloads_for_experiment1(is_local=True)
 # generate_rc_all_inserts()
 # generate_rc_all_queries()
